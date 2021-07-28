@@ -1,0 +1,22 @@
+[package]
+name = "nate-derive"
+version = "0.1.0"
+edition = "2018"
+authors = ["René Kijewski <rene.[SURNAME]@fu-berlin.de>"]
+license = "ISC OR MIT OR Apache-2.0"
+description = "Proc-macros for NaTE"
+homepage = "https://github.com/kijewski/nate"
+repository = "https://github.com/kijewski/nate"
+categories = ["template-engine"]
+keywords = ["html", "template"]
+readme = "README.md"
+
+[lib]
+name = "nate_derive"
+proc-macro = true
+
+[dependencies]
+memchr = "2"
+nom = "6"
+quote = "1"
+syn = { version = "1", features = ["full"] }
