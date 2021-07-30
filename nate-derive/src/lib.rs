@@ -245,39 +245,29 @@ fn parse_file(mut input: impl Read, mut output: impl Write) {
 fn parse(i: &[u8]) -> Vec<CodeOrData<'_>> {
     WsBlockIter::new(i)
         .map(|WsBlock(a, b, z)| match b {
-            Block::Data(s) => Block::Data(match (a, z) {
-                (true, true) => s.trim(),
-                (true, false) => s.trim_start(),
-                (false, true) => s.trim_end(),
-                (false, false) => s,
-            }),
+            Block::Data(DataSection::Data(s)) => {
+                let s = match (a, z) {
+                    (true, true) => s.trim(),
+                    (true, false) => s.trim_start(),
+                    (false, true) => s.trim_end(),
+                    (false, false) => s,
+                };
+                Block::Data(DataSection::Data(s))
+            }
             b => b,
         })
+        .filter(|block| !block.is_empty())
         .fold(Vec::new(), |mut accu, block| {
             match block {
-                Block::Comment(_) => {}
+                Block::Comment => {}
                 Block::Code(s) => match accu.last_mut() {
                     Some(CodeOrData::Code(blocks)) => blocks.push(s),
                     _ => accu.push(CodeOrData::Code(vec![s])),
                 },
-                Block::Data(s)
-                | Block::Raw(s)
-                | Block::Escaped(s)
-                | Block::Debug(s)
-                | Block::Verbose(s) => {
-                    let data = match block {
-                        Block::Data(_) => DataSection::Data(s),
-                        Block::Raw(_) => DataSection::Raw(s),
-                        Block::Escaped(_) => DataSection::Escaped(s),
-                        Block::Debug(_) => DataSection::Debug(s),
-                        Block::Verbose(_) => DataSection::Verbose(s),
-                        _ => panic!("Impossible"),
-                    };
-                    match accu.last_mut() {
-                        Some(CodeOrData::Data(blocks)) => blocks.push(data),
-                        _ => accu.push(CodeOrData::Data(vec![data])),
-                    }
-                }
+                Block::Data(data) => match accu.last_mut() {
+                    Some(CodeOrData::Data(blocks)) => blocks.push(data),
+                    _ => accu.push(CodeOrData::Data(vec![data])),
+                },
             }
             accu
         })
@@ -299,13 +289,19 @@ enum DataSection<'a> {
 
 #[derive(Clone)]
 enum Block<'a> {
-    Data(&'a str),
-    Raw(&'a str),
-    Escaped(&'a str),
-    Debug(&'a str),
-    Verbose(&'a str),
+    Data(DataSection<'a>),
     Code(&'a str),
-    Comment(&'a [u8]),
+    Comment,
+}
+
+impl Block<'_> {
+    fn is_empty(&self) -> bool {
+        match self {
+            Block::Comment => true,
+            Block::Code(s) | Block::Data(DataSection::Data(s)) => s.is_empty(),
+            Block::Data(_) => false,
+        }
+    }
 }
 
 struct WsBlock<'a>(bool, Block<'a>, bool);
@@ -313,9 +309,13 @@ struct WsBlock<'a>(bool, Block<'a>, bool);
 struct WsBlockIter<'a>(&'a [u8], Option<WsBlock<'a>>);
 
 impl<'a> WsBlockIter<'a> {
-    fn new(mut i: &'a [u8]) -> Self {
-        let b = parse_ws_block(&mut i);
-        Self(i, b)
+    fn new(i: &'a [u8]) -> Self {
+        if i.is_empty() {
+            Self(b"", None)
+        } else {
+            let (i, b) = parse_ws_block(i).unwrap();
+            Self(i, Some(b))
+        }
     }
 }
 
@@ -323,35 +323,35 @@ impl<'a> Iterator for WsBlockIter<'a> {
     type Item = WsBlock<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match (parse_ws_block(&mut self.0), &self.1) {
+        let cur = if !self.0.is_empty() {
+            let (j, b) = parse_ws_block(self.0).unwrap();
+            self.0 = j;
+            Some(b)
+        } else {
+            None
+        };
+        match (cur, &self.1) {
             (Some(WsBlock(next_a, next_b, next_z)), Some(WsBlock(cur_a, cur_b, cur_z))) => {
                 let result = WsBlock(*cur_a, cur_b.clone(), cur_z | next_a);
                 self.1 = Some(WsBlock(next_a || *cur_z, next_b, next_z));
                 Some(result)
             }
             (None, _) => self.1.take(),
-            (cur, None) => cur, // impossible
+            (_, None) => panic!("Impossible"),
         }
     }
 }
 
-fn parse_ws_block<'a>(i: &mut &'a [u8]) -> Option<WsBlock<'a>> {
-    if !i.is_empty() {
-        let (j, b) = alt((
-            parse_ws_verbose,
-            parse_ws_debug,
-            parse_ws_raw,
-            parse_ws_escaped,
-            parse_ws_comment,
-            parse_ws_code,
-            parse_ws_data,
-        ))(*i)
-        .unwrap();
-        *i = j;
-        Some(b)
-    } else {
-        None
-    }
+fn parse_ws_block(i: &[u8]) -> IResult<&[u8], WsBlock<'_>> {
+    alt((
+        parse_ws_verbose,
+        parse_ws_debug,
+        parse_ws_raw,
+        parse_ws_escaped,
+        parse_ws_comment,
+        parse_ws_code,
+        parse_ws_data,
+    ))(i)
 }
 
 fn parse_ws_data(i: &[u8]) -> IResult<&[u8], WsBlock<'_>> {
@@ -436,7 +436,7 @@ fn parse_comment(i: &[u8]) -> IResult<&[u8], Block<'_>> {
         while start < i.len() {
             match memchr2(b'#', b'-', &i[start..=i.len() - 2]) {
                 Some(pos) if end(&i[pos..]).is_ok() => {
-                    return Ok((&i[start + pos..], Block::Comment(&i[..start + pos])))
+                    return Ok((&i[start + pos..], Block::Comment))
                 }
                 Some(pos) => {
                     start += pos;
@@ -447,7 +447,7 @@ fn parse_comment(i: &[u8]) -> IResult<&[u8], Block<'_>> {
             }
         }
     }
-    Ok((b"", Block::Comment(i)))
+    Ok((b"", Block::Comment))
 }
 
 fn parse_verbose(i: &[u8]) -> IResult<&[u8], Block<'_>> {
@@ -461,7 +461,7 @@ fn parse_verbose(i: &[u8]) -> IResult<&[u8], Block<'_>> {
                 Some(pos) if end(&i[pos..]).is_ok() => {
                     return Ok((
                         &i[start + pos..],
-                        Block::Verbose(from_utf8(&i[..start + pos]).unwrap()),
+                        Block::Data(DataSection::Verbose(from_utf8(&i[..start + pos]).unwrap())),
                     ))
                 }
                 Some(pos) => {
@@ -490,7 +490,7 @@ fn parse_debug(i: &[u8]) -> IResult<&[u8], Block<'_>> {
                 Some(pos) if end(&i[pos..]).is_ok() => {
                     return Ok((
                         &i[start + pos..],
-                        Block::Debug(from_utf8(&i[..start + pos]).unwrap()),
+                        Block::Data(DataSection::Debug(from_utf8(&i[..start + pos]).unwrap())),
                     ))
                 }
                 Some(pos) => {
@@ -519,7 +519,7 @@ fn parse_raw(i: &[u8]) -> IResult<&[u8], Block<'_>> {
                 Some(pos) if end(&i[pos..]).is_ok() => {
                     return Ok((
                         &i[start + pos..],
-                        Block::Raw(from_utf8(&i[..start + pos]).unwrap()),
+                        Block::Data(DataSection::Raw(from_utf8(&i[..start + pos]).unwrap())),
                     ))
                 }
                 Some(pos) => {
@@ -548,7 +548,7 @@ fn parse_escaped(i: &[u8]) -> IResult<&[u8], Block<'_>> {
                 Some(pos) if end(&i[pos..]).is_ok() => {
                     return Ok((
                         &i[start + pos..],
-                        Block::Escaped(from_utf8(&i[..start + pos]).unwrap()),
+                        Block::Data(DataSection::Escaped(from_utf8(&i[..start + pos]).unwrap())),
                     ))
                 }
                 Some(pos) => {
@@ -594,8 +594,11 @@ fn parse_code(i: &[u8]) -> IResult<&[u8], Block<'_>> {
 
 fn parse_data(i: &[u8]) -> IResult<&[u8], Block<'_>> {
     let (i, _) = not(eof)(i)?;
-    match memchr(b'{', i) {
-        Some(pos) => Ok((&i[pos..], Block::Data(from_utf8(&i[..pos]).unwrap()))),
-        None => Ok((b"", Block::Data(from_utf8(i).unwrap()))),
+    match memchr(b'{', &i[1..]) {
+        Some(pos) => Ok((
+            &i[pos + 1..],
+            Block::Data(DataSection::Data(from_utf8(&i[..pos + 1]).unwrap())),
+        )),
+        None => Ok((b"", Block::Data(DataSection::Data(from_utf8(i).unwrap())))),
     }
 }
