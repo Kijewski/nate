@@ -95,6 +95,11 @@
 //! For values in `{{{{{ verbose blocks }}}}}` their debug message is printed verbose as in `"{:#?}"`.
 //!
 //! Using hyphens `-` at the start/end of a block, whitespaces before/after the block are trimmed.
+//!
+//! Data sections `{{…}}` to `{{{{{…}}}}}` most not be empty.
+//! Code blocks and comment sections may be empty.
+//!
+//! Sections don't need to be closed at the end of the file.
 
 #![forbid(unsafe_code)]
 #![no_std]
