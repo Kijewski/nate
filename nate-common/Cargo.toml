@@ -1,6 +1,6 @@
 [package]
 name = "nate-common"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2018"
 authors = ["René Kijewski <rene.[SURNAME]@fu-berlin.de>"]
 license = "ISC OR MIT OR Apache-2.0"
@@ -8,8 +8,5 @@ description = "Helper functions for NaTE"
 homepage = "https://github.com/kijewski/nate"
 repository = "https://github.com/kijewski/nate"
 categories = ["template-engine"]
-keywords = ["html", "template"]
+keywords = ["html", "template", "no-std"]
 readme = "README.md"
-
-[lib]
-name = "nate_common"

@@ -9,19 +9,28 @@
 // You have to accept AT LEAST one of the aforementioned licenses to use, copy, modify, and/or distribute this software.
 // At your will you may redistribute the software under the terms of only one, two, or all three of the aforementioned licenses.
 
+#![forbid(unsafe_code)]
+#![no_std]
+
 //! ## **N**ot **a** **T**emplate **E**ngine
 //!
-//! This is not a template engine, but sugar to implicitly call `write!(…)` like in PHP, ASP, and everything you hate.
+//! This is not a template engine, but sugar to implicitly call `write!(…)` like in PHP.
 //! The only difference is that the output gets XML escaped automatically unless opted-out explicitly.
 //!
 //! E.g.
 //!
-//! *   templates/greeting.html:  
+//! *   templates/greeting.html:
+//!
 //!     ```xml
 //!     <h1>Hello, {{user}}!</h1>
 //!     ```
-//! *   src/main.rs:  
-//!     ```rs
+//!
+//!     The path is relative to the cargo manifest dir (where you find Cargo.toml) of the calling.
+//!
+//! *   src/main.rs:
+//!
+//!     ```ignore
+//!     use std::fmt::Write;
 //!     use nate::Nate;
 //!     
 //!     #[derive(Nate)]
@@ -30,14 +39,14 @@
 //!         user: &'a str,
 //!     }
 //!     
-//!     fn main() {
-//!         let mut output = String::new();
-//!         let tmpl = Greetings { user: "<World>" };
-//!         write!(output, "{}", tmpl).unwrap();
-//!         println!("{}", output);
-//!     }
+//!     let mut output = String::new();
+//!     let tmpl = Greetings { user: "<World>" };
+//!     write!(output, "{}", tmpl).unwrap();
+//!     println!("{}", output);
 //!     ```
+//!
 //! *   Output:
+//!
 //!     ```html
 //!     <h1>Hello, &#60;World&#62;!</h1>
 //!     ```
@@ -45,10 +54,12 @@
 //! No new traits are introduced, instead using `#[derive(Nate)]` works by implementing [fmt::Display].
 //! This also makes nesting of NaTE templates possible.
 //!
-//! A more complex example would be:  
+//! A more complex example would be:
 //!
-//! *   src/main.rs:  
-//!     ```rs
+//! *   src/main.rs:
+//!
+//!     ```ignore
+//!     use std::fmt::Write;
 //!     use nate::Nate;
 //!
 //!     #[derive(Nate)]
@@ -62,7 +73,9 @@
 //!         print!("{}", Template { limit: 99 });
 //!     }
 //!     ```
-//! *   templates/99-bottles.txt:  
+//!
+//! *   templates/99-bottles.txt:
+//!
 //!     ```html
 //!     {%-
 //!         for i in (1..=self.limit).rev() {
@@ -100,9 +113,10 @@
 //! Code blocks and comment sections may be empty.
 //!
 //! Sections don't need to be closed at the end of the file.
-
-#![forbid(unsafe_code)]
-#![no_std]
+//!
+//! To debug any errors you can add an argument as in `#[template(output = "some/path/generated.rs")]`.
+//! The generated code is stored in there even if there were parsing errors in the Rust code.
+//! The path is relative to the project root (where your Cargo.toml lives).
 
 pub use nate_common::XmlEscape;
 pub use nate_derive::Nate;

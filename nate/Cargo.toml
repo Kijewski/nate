@@ -11,9 +11,6 @@ categories = ["template-engine"]
 keywords = ["html", "template", "no-std"]
 readme = "README.md"
 
-[lib]
-name = "nate"
-
 [dependencies]
-nate-common = { path = "../nate-common", version = "0.1.0" }
+nate-common = { path = "../nate-common", version = "0.1.1" }
 nate-derive = { path = "../nate-derive", version = "0.1.3" }

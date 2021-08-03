@@ -29,21 +29,25 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{Attribute, DeriveInput, Expr, ExprLit, ExprPath, Lit};
 
-#[cfg(doc)]
-use std::fmt;
-
-/// Implement [fmt::Display](fmt::Display) for a struct or enum.
+/// Implement [fmt::Display](core::fmt::Display) for a struct or enum.
 ///
 /// Usage:
 ///
-/// ```rs
+/// ```ignore
 /// #[derive(Nate)]
-/// #[template(path = "…")]
-/// struct …
+/// #[template(
+///     path = "…",
+///     output = "…",
+/// )]
+/// struct Template { /* … */ }
 /// ```
 ///
-/// The path is relative to the cargo mafinest dir (where you find Cargo.toml) of the calling
+/// The path is relative to the cargo manifest dir (where you find Cargo.toml) of the calling
 /// project.
+///
+/// The option debug output path is relative to the cargo manifest dir.
+/// If supplied the generated code will be written into this file.
+/// An existing file fill be replaced!
 #[proc_macro_derive(Nate, attributes(template))]
 pub fn derive_nate(input: TokenStream) -> TokenStream {
     let ast: DeriveInput = syn::parse(input).unwrap();

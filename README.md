@@ -1,16 +1,21 @@
 ## **N**ot **a** **T**emplate **E**ngine
 
-This is not a template engine, but sugar to implicitly call `write!(…)` like in PHP, ASP, and everything you hate.
+This is not a template engine, but sugar to implicitly call `write!(…)` like in PHP.
 The only difference is that the output gets XML escaped automatically unless opted-out explicitly.
 
 E.g.
 
-*   templates/greeting.html:  
+*   templates/greeting.html:
+
     ```xml
     <h1>Hello, {{user}}!</h1>
     ```
-*   src/main.rs:  
-    ```rs
+
+    The path is relative to the cargo manifest dir (where you find Cargo.toml) of the calling.
+
+*   src/main.rs:
+
+    ```rust
     use nate::Nate;
     
     #[derive(Nate)]
@@ -26,7 +31,9 @@ E.g.
         println!("{}", output);
     }
     ```
+
 *   Output:
+
     ```html
     <h1>Hello, &#60;World&#62;!</h1>
     ```
@@ -36,8 +43,9 @@ This also makes nesting of NaTE templates possible.
 
 A more complex example would be:  
 
-*   src/main.rs:  
-    ```rs
+*   src/main.rs:
+
+    ```rust
     use nate::Nate;
 
     #[derive(Nate)]
@@ -51,7 +59,9 @@ A more complex example would be:
         print!("{}", Template { limit: 99 });
     }
     ```
-*   templates/99-bottles.txt:  
+
+*   templates/99-bottles.txt:
+
     ```html
     {%-
         for i in (1..=self.limit).rev() {
@@ -89,3 +99,7 @@ Data sections `{{…}}` to `{{{{{…}}}}}` must not be empty.
 Code blocks and comment sections may be empty.
 
 Sections don't need to be closed at the end of the file.
+
+To debug any errors you can add an argument as in `#[template(output = "some/path/generated.rs")]`.
+The generated code is stored in there even if there were parsing errors in the Rust code.
+The path is relative to the project root (where your Cargo.toml lives).

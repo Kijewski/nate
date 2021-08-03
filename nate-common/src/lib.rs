@@ -10,6 +10,7 @@
 // At your will you may redistribute the software under the terms of only one, two, or all three of the aforementioned licenses.
 
 #![forbid(unsafe_code)]
+#![no_std]
 
 use core::fmt::{self, Write};
 
@@ -56,7 +57,7 @@ impl fmt::Write for XmlEscapeWriter<'_, '_> {
     }
 
     fn write_char(&mut self, c: char) -> fmt::Result {
-        match dbg!(c) {
+        match c {
             '"' => self.0.write_str("&#34;"),
             '&' => self.0.write_str("&#38;"),
             '\'' => self.0.write_str("&#39;"),

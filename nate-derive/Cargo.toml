@@ -12,7 +12,6 @@ keywords = ["html", "template", "no-std"]
 readme = "README.md"
 
 [lib]
-name = "nate_derive"
 proc-macro = true
 
 [dependencies]
