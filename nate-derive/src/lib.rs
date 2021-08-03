@@ -14,7 +14,7 @@
 use std::env::var;
 use std::fmt::Write;
 use std::fs::OpenOptions;
-use std::io::Read;
+use std::io::{Read, Write as _};
 use std::path::Path;
 use std::str::from_utf8;
 
@@ -49,18 +49,11 @@ pub fn derive_nate(input: TokenStream) -> TokenStream {
     let ast: DeriveInput = syn::parse(input).unwrap();
     let ident = ast.ident.to_string();
 
-    let TemplateAttr::Path(path) = parse_attributes(ast.attrs);
+    let TemplateAttrs { path, generated } = parse_attributes(ast.attrs);
 
     let base = var("CARGO_MANIFEST_DIR").unwrap();
-    let path = Path::new(&base).join(&path);
-    let f = OpenOptions::new().read(true).open(&path);
-    let f = match f {
-        Ok(f) => f,
-        Err(err) => {
-            eprintln!("Could not open file={:?}: {:?}", path, err);
-            panic!();
-        }
-    };
+    let path = Path::new(&base).join(path);
+    let output = generated.map(|s| Path::new(&base).join(s));
 
     let mut content = String::new();
     let generics = &ast.generics;
@@ -97,22 +90,47 @@ pub fn derive_nate(input: TokenStream) -> TokenStream {
         r#"{{
 fn fmt(&self, output: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {{
 const _: &'static [u8] = ::core::include_bytes!({:?});"#,
-        path
+        &path
     )
     .unwrap();
-    parse_file(f, &mut content);
+    {
+        let mut buf = Vec::new();
+        match OpenOptions::new().read(true).open(&path) {
+            Ok(mut f) => {
+                f.read_to_end(&mut buf)
+                    .expect("Could not read source file even after successfully opening it.");
+            }
+            Err(err) => {
+                eprintln!("Could not open file={:?}: {:?}", path, err);
+                panic!();
+            }
+        }
+        parse_file(&buf, &mut content);
+    }
     writeln!(content, "::core::fmt::Result::Ok(())\n}}\n}}").unwrap();
+
+    if let Some(output) = output {
+        let mut f = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&output)
+            .expect("Could not open output file");
+        write!(f, "{}", &content)
+            .expect("Could not write to output file after successfully opening it");
+    }
 
     content
         .parse()
         .expect("Could not parse generated code as Rust source.")
 }
 
-enum TemplateAttr {
-    Path(String),
+struct TemplateAttrs {
+    path: String,
+    generated: Option<String>,
 }
 
-fn parse_attributes(attrs: Vec<Attribute>) -> TemplateAttr {
+fn parse_attributes(attrs: Vec<Attribute>) -> TemplateAttrs {
     let mut arguments = None;
     for attr in attrs.into_iter() {
         let Attribute {
@@ -130,6 +148,7 @@ fn parse_attributes(attrs: Vec<Attribute>) -> TemplateAttr {
     let arguments = arguments.expect("Missing #[template(…)] attribute.");
 
     let mut path = None;
+    let mut generated = None;
 
     let mut handle_arg = |e: &Expr| {
         let assign = if let Expr::Assign(a) = e {
@@ -167,6 +186,12 @@ fn parse_attributes(attrs: Vec<Attribute>) -> TemplateAttr {
                     panic!()
                 }
             }
+            "generated" => {
+                if generated.replace(right).is_some() {
+                    eprintln!("Duplicated key 'generated' in #[template(…)] attribute.");
+                    panic!()
+                }
+            }
             s => {
                 eprintln!("Unexpected key {:?} in #[template(…)] attribute.", s);
                 panic!()
@@ -189,22 +214,14 @@ fn parse_attributes(attrs: Vec<Attribute>) -> TemplateAttr {
         }
     }
 
-    match path {
-        Some(path) => TemplateAttr::Path(path),
-        None => {
-            eprintln!("Expected key 'path' in #[template(…)] attribute.");
-            panic!();
-        }
+    TemplateAttrs {
+        path: path.expect("Expected key 'path' in #[template(…)] attribute."),
+        generated,
     }
 }
 
-fn parse_file(mut input: impl Read, mut output: impl Write) {
-    let mut buf = Vec::new();
-    input
-        .read_to_end(&mut buf)
-        .expect("Could not read source file even after successfully opening it.");
-    let p = parse(&buf);
-    for blocks in p.into_iter() {
+fn parse_file(buf: &[u8], mut output: impl Write) {
+    for blocks in parse(buf).into_iter() {
         match blocks {
             CodeOrData::Code(blocks) => {
                 for code in blocks.into_iter() {
@@ -212,7 +229,7 @@ fn parse_file(mut input: impl Read, mut output: impl Write) {
                 }
             }
             CodeOrData::Data(blocks) => {
-                write!(output, "::core::write!(\n    output,\n    \"").unwrap();
+                write!(output, "{{\n::core::write!(\noutput,\n\"").unwrap();
                 for block in blocks.iter() {
                     match block {
                         DataSection::Data(s) => {
@@ -238,14 +255,14 @@ fn parse_file(mut input: impl Read, mut output: impl Write) {
                         }
                     }
                 }
-                writeln!(output, ")?;").unwrap();
+                writeln!(output, ")?;\n}}").unwrap();
             }
             CodeOrData::Error(nom::Err::Incomplete(_)) => {
                 panic!("Impossible");
             }
             CodeOrData::Error(nom::Err::Error(err) | nom::Err::Failure(err)) => {
                 let offset = buf.len() - err.input.len();
-                let (source_before, source_after) = from_utf8(&buf).unwrap().split_at(offset);
+                let (source_before, source_after) = from_utf8(buf).unwrap().split_at(offset);
 
                 let source_after = match source_after.char_indices().enumerate().take(41).last() {
                     Some((40, (i, _))) => format!("{:?}...", &source_after[..i]),
