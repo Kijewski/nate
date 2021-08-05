@@ -97,20 +97,20 @@ const _: &'static [u8] = ::core::include_bytes!({:?});"#,
         &path
     )
     .unwrap();
-    {
-        let mut buf = Vec::new();
-        match OpenOptions::new().read(true).open(&path) {
-            Ok(mut f) => {
-                f.read_to_end(&mut buf)
-                    .expect("Could not read source file even after successfully opening it.");
-            }
-            Err(err) => {
-                eprintln!("Could not open file={:?}: {:?}", path, err);
-                panic!();
-            }
+
+    let mut buf = Vec::new();
+    match OpenOptions::new().read(true).open(&path) {
+        Ok(mut f) => {
+            f.read_to_end(&mut buf)
+                .expect("Could not read source file even after successfully opening it.");
         }
-        parse_file(&buf, &mut content);
+        Err(err) => {
+            eprintln!("Could not open file={:?}: {:?}", path, err);
+            panic!();
+        }
     }
+    parse_file(&buf, &mut content);
+
     writeln!(content, "::core::fmt::Result::Ok(())\n}}\n}}").unwrap();
 
     if let Some(output) = output {
