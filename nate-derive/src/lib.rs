@@ -122,6 +122,14 @@ const _: &'static [u8] = ::core::include_bytes!({:?});"#,
             .expect("Could not open output file");
         write!(f, "{}", &content)
             .expect("Could not write to output file after successfully opening it");
+
+        if let Ok(path) = output.canonicalize() {
+            if let Some(path) = path.to_str() {
+                if let Ok(ts) = format!("::core::include! {{ {:?} }}", path).parse() {
+                    return ts;
+                }
+            }
+        }
     }
 
     content
