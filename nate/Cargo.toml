@@ -1,16 +1,16 @@
 [package]
 name = "nate"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2018"
 authors = ["René Kijewski <rene.[SURNAME]@fu-berlin.de>"]
 license = "ISC OR MIT OR Apache-2.0"
 description = "Not a Template Engine. Derive Display using a template."
-homepage = "https://github.com/kijewski/nate"
-repository = "https://github.com/kijewski/nate"
+homepage = "https://github.com/Kijewski/nate"
+repository = "https://github.com/Kijewski/nate"
 categories = ["template-engine"]
 keywords = ["html", "template", "no-std"]
 readme = "README.md"
 
 [dependencies]
-nate-common = { path = "../nate-common", version = "0.1.1" }
-nate-derive = { path = "../nate-derive", version = "0.1.3" }
+nate-common = { path = "../nate-common", version = "0.1.4" }
+nate-derive = { path = "../nate-derive", version = "0.1.4" }
