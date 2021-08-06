@@ -93,12 +93,17 @@ For values in `{{{{ debug blocks }}}}` their debug message is printed as in `"{:
 
 For values in `{{{{{ verbose blocks }}}}}` their debug message is printed verbose as in `"{:#?}"`.
 
+With `{< include >}` block you can include a template file.
+It then behaves like it was copy-pasted into the current file.
+If the path starts with "." or "..", the file is searched relative to the current file.
+Otherwise it is search in the project root.
+
 Using hyphens `-` at the start/end of a block, whitespaces before/after the block are trimmed.
 
-Data sections `{{…}}` to `{{{{{…}}}}}` must not be empty.
-Code blocks and comment sections may be empty.
+Data blocks `{{…}}` to `{{{{{…}}}}}` and includes `{<…>}` must not be empty.
+Code `{%…%}` and comment `{#…#}` blocks may be empty.
 
-Sections don't need to be closed at the end of the file.
+Blocks don't need to be closed at the end of the file.
 
 To debug any errors you can add an argument as in `#[template(output = "some/path/generated.rs")]`.
 The generated code is stored in there even if there were parsing errors in the Rust code.

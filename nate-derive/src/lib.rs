@@ -232,12 +232,6 @@ fn load_file(path: &Path) -> Vec<u8> {
 }
 
 fn parse_file(path: &Path, mut output: impl Write) {
-    writeln!(
-        output,
-        "const _: &'static [u8] = ::core::include_bytes!({:?});\n{{",
-        &path
-    )
-    .unwrap();
     let buf = load_file(path);
     for blocks in parse(path, &buf).into_iter() {
         match blocks {
@@ -277,11 +271,16 @@ fn parse_file(path: &Path, mut output: impl Write) {
             }
         }
     }
-    writeln!(output, "}}").unwrap();
 }
 
 fn parse(path: &Path, i: &[u8]) -> Vec<ParsedData> {
-    WsBlockIter::new(path, i)
+    let mut output = Vec::new();
+    parse_into(path, i, &mut output);
+    output
+}
+
+fn parse_into(path: &Path, i: &[u8], accu: &mut Vec<ParsedData>) {
+    let it = WsBlockIter::new(path, i)
         .map(|WsBlock(a, b, z)| match b {
             Block::Data(DataSection::Data(s)) => {
                 let t = match (a, z) {
@@ -298,21 +297,47 @@ fn parse(path: &Path, i: &[u8]) -> Vec<ParsedData> {
             }
             b => b,
         })
-        .filter(|block| !block.is_empty())
-        .fold(Vec::new(), |mut accu, block| {
-            match block {
-                Block::Comment => {}
-                Block::Code(s) => match accu.last_mut() {
-                    Some(ParsedData::Code(blocks)) => blocks.push(s),
-                    _ => accu.push(ParsedData::Code(vec![s])),
-                },
-                Block::Data(data) => match accu.last_mut() {
-                    Some(ParsedData::Data(blocks)) => blocks.push(data),
-                    _ => accu.push(ParsedData::Data(vec![data])),
-                },
+        .filter(|block| !block.is_empty());
+
+    let s = format!(
+        "{{\nlet _ = (\"start of\", ::core::include_bytes!({:?}));",
+        path
+    );
+    match accu.last_mut() {
+        Some(ParsedData::Code(blocks)) => blocks.push(s),
+        _ => accu.push(ParsedData::Code(vec![s])),
+    }
+
+    for block in it {
+        match block {
+            Block::Comment => {}
+            Block::Code(s) => match accu.last_mut() {
+                Some(ParsedData::Code(blocks)) => blocks.push(s),
+                _ => accu.push(ParsedData::Code(vec![s])),
+            },
+            Block::Data(data) => match accu.last_mut() {
+                Some(ParsedData::Data(blocks)) => blocks.push(data),
+                _ => accu.push(ParsedData::Data(vec![data])),
+            },
+            Block::Include(include_path) => {
+                let include_path = include_path.trim();
+                let include_path = match Path::new(include_path).iter().next() {
+                    Some(d) if d.eq(".") || d.eq("..") => {
+                        path.parent().unwrap_or(path).join(include_path)
+                    }
+                    _ => Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join(include_path),
+                };
+                let buf = load_file(&include_path);
+                parse_into(&include_path, &buf, accu);
             }
-            accu
-        })
+        }
+    }
+
+    let s = format!("let _ = (\"end of\", {:?});\n}}", path);
+    match accu.last_mut() {
+        Some(ParsedData::Code(blocks)) => blocks.push(s),
+        _ => accu.push(ParsedData::Code(vec![s])),
+    }
 }
 
 #[derive(Debug)]
@@ -335,6 +360,7 @@ enum Block {
     Data(DataSection),
     Code(String),
     Comment,
+    Include(String),
 }
 
 struct WsBlock(bool, Block, bool);
@@ -351,7 +377,7 @@ impl Block {
         match self {
             Block::Comment => true,
             Block::Code(s) | Block::Data(DataSection::Data(s)) => s.is_empty(),
-            Block::Data(_) => false,
+            Block::Data(_) | Block::Include(_) => false,
         }
     }
 }
@@ -362,11 +388,7 @@ impl<'a> WsBlockIter<'a> {
             path,
             start: i,
             pos: i,
-            next: Some(WsBlock(
-                false,
-                Block::Code(format!("let _ = include_bytes!({:?});", path)),
-                false,
-            )),
+            next: Some(WsBlock(false, Block::Comment, false)),
         }
     }
 }
@@ -437,6 +459,13 @@ fn parse_ws_block(i: &[u8]) -> IResult<&[u8], WsBlock> {
         |i| {
             let (i, (a, _, z)) = parse_block(i, b"{#", b"#}")?;
             Ok((i, WsBlock(a, Block::Comment, z)))
+        },
+        |i| {
+            let (j, (a, b, z)) = parse_block(i, b"{<", b">}")?;
+            match b.is_empty() {
+                false => Ok((j, WsBlock(a, Block::Include(b), z))),
+                true => Err(nom::Err::Error(error_position!(i, ErrorKind::NonEmpty))),
+            }
         },
         |i| parse_data_section(i, b"{{{{{", b"}}}}}", DataSection::Verbose),
         |i| parse_data_section(i, b"{{{{", b"}}}}", DataSection::Debug),
