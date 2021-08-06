@@ -461,9 +461,9 @@ fn parse_ws_block(i: &[u8]) -> IResult<&[u8], WsBlock> {
             Ok((i, WsBlock(a, Block::Comment, z)))
         },
         |i| {
-            let (j, (a, b, z)) = parse_block(i, b"{<", b">}")?;
+            let (next_i, (a, b, z)) = parse_block(i, b"{<", b">}")?;
             match b.is_empty() {
-                false => Ok((j, WsBlock(a, Block::Include(b), z))),
+                false => Ok((next_i, WsBlock(a, Block::Include(b), z))),
                 true => Err(nom::Err::Error(error_position!(i, ErrorKind::NonEmpty))),
             }
         },
