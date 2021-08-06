@@ -11,7 +11,7 @@ E.g.
     <h1>Hello, {{user}}!</h1>
     ```
 
-    The path is relative to the cargo manifest dir (where you find Cargo.toml) of the calling.
+    The path is relative to the cargo manifest dir (where you find Cargo.toml) of the project.
 
 *   src/main.rs:
 
