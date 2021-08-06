@@ -22,7 +22,7 @@ use memchr::{memchr, memchr2};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::combinator::opt;
-use nom::error::{Error, ErrorKind};
+use nom::error::ErrorKind;
 use nom::sequence::{terminated, tuple};
 use nom::{error_position, IResult};
 use proc_macro::TokenStream;
@@ -91,26 +91,10 @@ pub fn derive_nate(input: TokenStream) -> TokenStream {
 
     writeln!(
         content,
-        r#"{{
-fn fmt(&self, output: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {{
-const _: &'static [u8] = ::core::include_bytes!({:?});"#,
-        &path
+        "{{\nfn fmt(&self, output: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {{"
     )
     .unwrap();
-
-    let mut buf = Vec::new();
-    match OpenOptions::new().read(true).open(&path) {
-        Ok(mut f) => {
-            f.read_to_end(&mut buf)
-                .expect("Could not read source file even after successfully opening it.");
-        }
-        Err(err) => {
-            eprintln!("Could not open file={:?}: {:?}", path, err);
-            panic!();
-        }
-    }
-    parse_file(&buf, &mut content);
-
+    parse_file(&path, &mut content);
     writeln!(content, "::core::fmt::Result::Ok(())\n}}\n}}").unwrap();
 
     if let Some(output) = output {
@@ -232,15 +216,37 @@ fn parse_attributes(attrs: Vec<Attribute>) -> TemplateAttrs {
     }
 }
 
-fn parse_file(buf: &[u8], mut output: impl Write) {
-    for blocks in parse(buf).into_iter() {
+fn load_file(path: &Path) -> Vec<u8> {
+    let mut buf = Vec::new();
+    match OpenOptions::new().read(true).open(&path) {
+        Ok(mut f) => {
+            f.read_to_end(&mut buf)
+                .expect("Could not read source file even after successfully opening it.");
+        }
+        Err(err) => {
+            eprintln!("Could not open file={:?}: {:?}", path, err);
+            panic!();
+        }
+    }
+    buf
+}
+
+fn parse_file(path: &Path, mut output: impl Write) {
+    writeln!(
+        output,
+        "const _: &'static [u8] = ::core::include_bytes!({:?});\n{{",
+        &path
+    )
+    .unwrap();
+    let buf = load_file(path);
+    for blocks in parse(path, &buf).into_iter() {
         match blocks {
-            CodeOrData::Code(blocks) => {
+            ParsedData::Code(blocks) => {
                 for code in blocks.into_iter() {
                     writeln!(output, "{}", code).unwrap();
                 }
             }
-            CodeOrData::Data(blocks) => {
+            ParsedData::Data(blocks) => {
                 write!(output, "{{\n::core::write!(\noutput,\n\"").unwrap();
                 for block in blocks.iter() {
                     match block {
@@ -269,43 +275,26 @@ fn parse_file(buf: &[u8], mut output: impl Write) {
                 }
                 writeln!(output, ")?;\n}}").unwrap();
             }
-            CodeOrData::Error(nom::Err::Incomplete(_)) => {
-                panic!("Impossible");
-            }
-            CodeOrData::Error(nom::Err::Error(err) | nom::Err::Failure(err)) => {
-                let offset = buf.len() - err.input.len();
-                let (source_before, source_after) = from_utf8(buf).unwrap().split_at(offset);
-
-                let source_after = match source_after.char_indices().enumerate().take(41).last() {
-                    Some((40, (i, _))) => format!("{:?}...", &source_after[..i]),
-                    _ => format!("{:?}", source_after),
-                };
-
-                let (row, last_line) = source_before.lines().enumerate().last().unwrap();
-                let column = last_line.chars().count();
-
-                panic!(
-                    "Problems parsing template source at row {}, column {} near:\n{}",
-                    row + 1,
-                    column,
-                    source_after,
-                );
-            }
         }
     }
+    writeln!(output, "}}").unwrap();
 }
 
-fn parse(i: &[u8]) -> Vec<CodeOrData<'_>> {
-    WsBlockIter::new(i)
+fn parse(path: &Path, i: &[u8]) -> Vec<ParsedData> {
+    WsBlockIter::new(path, i)
         .map(|WsBlock(a, b, z)| match b {
             Block::Data(DataSection::Data(s)) => {
-                let s = match (a, z) {
+                let t = match (a, z) {
                     (true, true) => s.trim(),
                     (true, false) => s.trim_start(),
                     (false, true) => s.trim_end(),
-                    (false, false) => s,
+                    (false, false) => &s,
                 };
-                Block::Data(DataSection::Data(s))
+                if s.len() != t.len() {
+                    Block::Data(DataSection::Data(t.to_owned()))
+                } else {
+                    Block::Data(DataSection::Data(s))
+                }
             }
             b => b,
         })
@@ -314,120 +303,132 @@ fn parse(i: &[u8]) -> Vec<CodeOrData<'_>> {
             match block {
                 Block::Comment => {}
                 Block::Code(s) => match accu.last_mut() {
-                    Some(CodeOrData::Code(blocks)) => blocks.push(s),
-                    _ => accu.push(CodeOrData::Code(vec![s])),
+                    Some(ParsedData::Code(blocks)) => blocks.push(s),
+                    _ => accu.push(ParsedData::Code(vec![s])),
                 },
                 Block::Data(data) => match accu.last_mut() {
-                    Some(CodeOrData::Data(blocks)) => blocks.push(data),
-                    _ => accu.push(CodeOrData::Data(vec![data])),
+                    Some(ParsedData::Data(blocks)) => blocks.push(data),
+                    _ => accu.push(ParsedData::Data(vec![data])),
                 },
-                Block::Error(err) => accu.push(CodeOrData::Error(err)),
             }
             accu
         })
 }
 
 #[derive(Debug)]
-enum CodeOrData<'a> {
-    Code(Vec<&'a str>),
-    Data(Vec<DataSection<'a>>),
-    Error(nom::Err<Error<&'a [u8]>>),
+enum ParsedData {
+    Code(Vec<String>),
+    Data(Vec<DataSection>),
 }
 
-#[derive(Debug, Copy, Clone)]
-enum DataSection<'a> {
-    Data(&'a str),
-    Raw(&'a str),
-    Escaped(&'a str),
-    Debug(&'a str),
-    Verbose(&'a str),
+#[derive(Debug, Clone)]
+enum DataSection {
+    Data(String),
+    Raw(String),
+    Escaped(String),
+    Debug(String),
+    Verbose(String),
 }
 
-#[derive(Debug)]
-enum Block<'a> {
-    Data(DataSection<'a>),
-    Code(&'a str),
+#[derive(Debug, Clone)]
+enum Block {
+    Data(DataSection),
+    Code(String),
     Comment,
-    Error(nom::Err<Error<&'a [u8]>>),
 }
 
-struct WsBlock<'a>(bool, Block<'a>, bool);
+struct WsBlock(bool, Block, bool);
 
-struct WsBlockIter<'a>(&'a [u8], Option<WsBlock<'a>>);
-
-fn clone_err<'a>(err: &nom::Err<Error<&'a [u8]>>) -> nom::Err<Error<&'a [u8]>> {
-    match *err {
-        nom::Err::Incomplete(err) => nom::Err::Incomplete(err),
-        nom::Err::Error(Error { input, code }) => nom::Err::Error(Error { input, code }),
-        nom::Err::Failure(Error { input, code }) => nom::Err::Failure(Error { input, code }),
-    }
+struct WsBlockIter<'a> {
+    path: &'a Path,
+    start: &'a [u8],
+    pos: &'a [u8],
+    next: Option<WsBlock>,
 }
 
-impl Clone for Block<'_> {
-    fn clone(&self) -> Self {
-        match *self {
-            Block::Data(d) => Block::Data(d),
-            Block::Code(c) => Block::Code(c),
-            Block::Comment => Block::Comment,
-            Block::Error(ref err) => Block::Error(clone_err(err)),
-        }
-    }
-}
-
-impl Block<'_> {
+impl Block {
     fn is_empty(&self) -> bool {
         match self {
             Block::Comment => true,
             Block::Code(s) | Block::Data(DataSection::Data(s)) => s.is_empty(),
-            Block::Data(_) | Block::Error(_) => false,
+            Block::Data(_) => false,
         }
     }
 }
 
 impl<'a> WsBlockIter<'a> {
-    fn new(i: &'a [u8]) -> Self {
-        if i.is_empty() {
-            Self(b"", None)
-        } else {
-            match parse_ws_block(i) {
-                Ok((i, b)) => Self(i, Some(b)),
-                Err(err) => Self(b"", Some(WsBlock(false, Block::Error(err), false))),
-            }
+    fn new(path: &'a Path, i: &'a [u8]) -> Self {
+        Self {
+            path,
+            start: i,
+            pos: i,
+            next: Some(WsBlock(
+                false,
+                Block::Code(format!("let _ = include_bytes!({:?});", path)),
+                false,
+            )),
         }
     }
 }
 
-impl<'a> Iterator for WsBlockIter<'a> {
-    type Item = WsBlock<'a>;
+fn abort_with_nom_error(err: nom::Err<nom::error::Error<&[u8]>>, start: &[u8], path: &Path) -> ! {
+    match err {
+        nom::Err::Incomplete(_) => {
+            panic!("Impossible");
+        }
+        nom::Err::Error(err) | nom::Err::Failure(err) => {
+            let offset = start.len() - err.input.len();
+            let (source_before, source_after) = from_utf8(start).unwrap().split_at(offset);
+
+            let source_after = match source_after.char_indices().enumerate().take(41).last() {
+                Some((40, (i, _))) => format!("{:?}...", &source_after[..i]),
+                _ => format!("{:?}", source_after),
+            };
+
+            let (row, last_line) = source_before.lines().enumerate().last().unwrap();
+            let column = last_line.chars().count();
+
+            panic!(
+                "Problems parsing template source {:?} at row {}, column {} near:\n{}",
+                path,
+                row + 1,
+                column,
+                source_after,
+            );
+        }
+    }
+}
+
+impl Iterator for WsBlockIter<'_> {
+    type Item = WsBlock;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let cur = if !self.0.is_empty() {
-            match parse_ws_block(self.0) {
+        let cur = if !self.pos.is_empty() {
+            match parse_ws_block(self.pos) {
                 Ok((j, b)) => {
-                    self.0 = j;
+                    self.pos = j;
                     Some(b)
                 }
                 Err(err) => {
-                    self.0 = b"";
-                    Some(WsBlock(false, Block::Error(err), false))
+                    abort_with_nom_error(err, self.start, self.path);
                 }
             }
         } else {
             None
         };
-        match (cur, &self.1) {
+        match (cur, &self.next) {
             (Some(WsBlock(next_a, next_b, next_z)), Some(WsBlock(cur_a, cur_b, cur_z))) => {
                 let result = WsBlock(*cur_a, cur_b.clone(), cur_z | next_a);
-                self.1 = Some(WsBlock(next_a || *cur_z, next_b, next_z));
+                self.next = Some(WsBlock(next_a || *cur_z, next_b, next_z));
                 Some(result)
             }
-            (None, _) => self.1.take(),
+            (None, _) => self.next.take(),
             (_, None) => panic!("Impossible"),
         }
     }
 }
 
-fn parse_ws_block(i: &[u8]) -> IResult<&[u8], WsBlock<'_>> {
+fn parse_ws_block(i: &[u8]) -> IResult<&[u8], WsBlock> {
     alt((
         |i| {
             let (i, (a, b, z)) = parse_block(i, b"{%", b"%}")?;
@@ -449,14 +450,20 @@ fn parse_block<'a>(
     i: &'a [u8],
     start: &'static [u8],
     end: &'static [u8],
-) -> IResult<&'a [u8], (bool, &'a str, bool)> {
-    let inner = |i: &'a [u8]| -> IResult<&'a [u8], (&'a str, bool)> {
+) -> IResult<&'a [u8], (bool, String, bool)> {
+    let inner = |i: &'a [u8]| -> IResult<&'a [u8], (String, bool)> {
         let mut start = 0;
         while (i.len() - start) >= end.len() {
             if let Some(pos) = memchr2(end[0], b'-', &i[start..]) {
                 let (j, end) = opt(terminated(opt(tag(b"-")), tag(end)))(&i[start + pos..])?;
                 if let Some(trim) = end {
-                    return Ok((j, (from_utf8(&i[..start + pos]).unwrap(), trim.is_some())));
+                    return Ok((
+                        j,
+                        (
+                            from_utf8(&i[..start + pos]).unwrap().trim().to_owned(),
+                            trim.is_some(),
+                        ),
+                    ));
                 } else if pos > 0 {
                     start += pos;
                 } else {
@@ -466,7 +473,7 @@ fn parse_block<'a>(
                 break;
             }
         }
-        Ok((b"", (from_utf8(i).unwrap(), false)))
+        Ok((b"", (from_utf8(i).unwrap().trim().to_owned(), false)))
     };
     let (i, (_, trim_start, (b, trim_end))) = tuple((tag(start), opt(tag(b"-")), inner))(i)?;
     Ok((i, (trim_start.is_some(), b, trim_end)))
@@ -476,10 +483,9 @@ fn parse_data_section<'a>(
     i: &'a [u8],
     start: &'static [u8],
     end: &'static [u8],
-    kind: impl 'static + Fn(&'a str) -> DataSection<'a>,
-) -> IResult<&'a [u8], WsBlock<'a>> {
+    kind: impl 'static + Fn(String) -> DataSection,
+) -> IResult<&'a [u8], WsBlock> {
     let (j, (trim_start, b, trim_end)) = parse_block(i, start, end)?;
-    let b = b.trim();
     if !b.is_empty() {
         Ok((j, WsBlock(trim_start, Block::Data(kind(b)), trim_end)))
     } else {
@@ -487,13 +493,13 @@ fn parse_data_section<'a>(
     }
 }
 
-fn parse_data<'a>(i: &'a [u8]) -> IResult<&'a [u8], WsBlock<'a>> {
+fn parse_data<'a>(i: &'a [u8]) -> IResult<&'a [u8], WsBlock> {
     let (i, b): (&'a [u8], _) = if let Some(pos) = memchr(b'{', &i[1..]) {
         let (b, i) = i.split_at(pos + 1);
         (i, b)
     } else {
         (b"", i)
     };
-    let b = DataSection::Data(from_utf8(b).unwrap());
+    let b = DataSection::Data(from_utf8(b).unwrap().to_owned());
     Ok((i, WsBlock(false, Block::Data(b), false)))
 }
