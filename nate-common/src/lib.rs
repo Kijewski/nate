@@ -18,12 +18,19 @@ use core::fmt::{self, Write};
 ///
 /// All characters are written as is except `"`, `&`, `'`, `<`, and `>` which are printed as e.g.
 /// `&#34;`.
-pub struct XmlEscape<T: ?Sized + fmt::Display>(pub T);
+pub struct XmlEscape<T: ?Sized>(pub T);
 
 impl<T: ?Sized + fmt::Display> fmt::Display for XmlEscape<T> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(XmlEscapeWriter(f), "{}", &self.0)
+    }
+}
+
+impl<T: ?Sized + fmt::Debug> fmt::Debug for XmlEscape<T> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(XmlEscapeWriter(f), "{:?}", &self.0)
     }
 }
 

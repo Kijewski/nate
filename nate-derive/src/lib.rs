@@ -232,6 +232,8 @@ fn load_file(path: &Path) -> Vec<u8> {
 }
 
 fn parse_file(path: &Path, mut output: impl Write) {
+    use DataSection::*;
+
     let buf = load_file(path);
     for blocks in parse(path, &buf).into_iter() {
         match blocks {
@@ -244,26 +246,22 @@ fn parse_file(path: &Path, mut output: impl Write) {
                 write!(output, "{{\n::core::write!(\noutput,\n\"").unwrap();
                 for block in blocks.iter() {
                     match block {
-                        DataSection::Data(s) => {
+                        Data(s) => {
                             let s = format!("{:#?}", s).replace("{", "{{").replace("}", "}}");
                             write!(output, "{}", &s[1..s.len() - 1]).unwrap();
                         }
-                        DataSection::Raw(_) | DataSection::Escaped(_) => {
-                            write!(output, "{{}}").unwrap();
-                        }
-                        DataSection::Debug(_) => write!(output, "{{:?}}").unwrap(),
-                        DataSection::Verbose(_) => write!(output, "{{:#?}}").unwrap(),
+                        Raw(_) | Escaped(_) => write!(output, "{{}}").unwrap(),
+                        Debug(_) => write!(output, "{{:?}}").unwrap(),
+                        Verbose(_) => write!(output, "{{:#?}}").unwrap(),
                     }
                 }
                 writeln!(output, "\",").unwrap();
                 for data in blocks.into_iter() {
                     match data {
-                        DataSection::Data(_) => {}
-                        DataSection::Escaped(s) => {
+                        Data(_) => {}
+                        Raw(s) => writeln!(output, "&({}),", s).unwrap(),
+                        Escaped(s) | Debug(s) | Verbose(s) => {
                             writeln!(output, "::nate::XmlEscape(&({})),", s).unwrap();
-                        }
-                        DataSection::Raw(s) | DataSection::Debug(s) | DataSection::Verbose(s) => {
-                            writeln!(output, "&({}),", s).unwrap();
                         }
                     }
                 }

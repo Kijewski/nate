@@ -1,6 +1,6 @@
 [package]
 name = "nate"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2018"
 authors = ["René Kijewski <rene.[SURNAME]@fu-berlin.de>"]
 license = "ISC OR MIT OR Apache-2.0"
@@ -12,5 +12,5 @@ keywords = ["html", "template", "no-std"]
 readme = "README.md"
 
 [dependencies]
-nate-common = { path = "../nate-common", version = "0.1.4" }
-nate-derive = { path = "../nate-derive", version = "0.1.4" }
+nate-common = { path = "../nate-common", version = "0.1.5" }
+nate-derive = { path = "../nate-derive", version = "0.1.5" }
