@@ -84,7 +84,6 @@ impl fmt::Write for XmlEscapeWriter<'_, '_> {
 pub trait RawMarker {}
 
 impl RawMarker for bool {}
-impl RawMarker for char {}
 impl RawMarker for f32 {}
 impl RawMarker for f64 {}
 impl RawMarker for i128 {}
