@@ -10,7 +10,12 @@
 // At your will you may redistribute the software under the terms of only one, two, or all three of the aforementioned licenses.
 
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 #![no_std]
+
+//! Helper library for [NaTE](https://crates.io/crates/nate).
+//!
+//! This libary code used during the runtime of the generated code.
 
 use core::fmt::{self, Write};
 
@@ -64,13 +69,78 @@ impl fmt::Write for XmlEscapeWriter<'_, '_> {
     }
 
     fn write_char(&mut self, c: char) -> fmt::Result {
-        match c {
-            '"' => self.0.write_str("&#34;"),
-            '&' => self.0.write_str("&#38;"),
-            '\'' => self.0.write_str("&#39;"),
-            '<' => self.0.write_str("&#60;"),
-            '>' => self.0.write_str("&#62;"),
-            c => self.0.write_char(c),
+        self.0.write_str(match c {
+            '"' => "&#34;",
+            '&' => "&#38;",
+            '\'' => "&#39;",
+            '<' => "&#60;",
+            '>' => "&#62;",
+            c => return self.0.write_char(c),
+        })
+    }
+}
+
+/// Types implething this marker don't need to be escaped.
+pub trait RawMarker {}
+
+impl RawMarker for bool {}
+impl RawMarker for char {}
+impl RawMarker for f32 {}
+impl RawMarker for f64 {}
+impl RawMarker for i128 {}
+impl RawMarker for i16 {}
+impl RawMarker for i32 {}
+impl RawMarker for i64 {}
+impl RawMarker for i8 {}
+impl RawMarker for isize {}
+impl RawMarker for u128 {}
+impl RawMarker for u16 {}
+impl RawMarker for u32 {}
+impl RawMarker for u64 {}
+impl RawMarker for u8 {}
+impl RawMarker for usize {}
+
+impl<T: RawMarker> RawMarker for &T {}
+
+#[doc(hidden)]
+pub struct RawTag;
+
+#[doc(hidden)]
+pub struct EscapeTag;
+
+#[doc(hidden)]
+impl EscapeTag {
+    #[inline]
+    pub fn wrap<T>(&self, value: T) -> XmlEscape<T> {
+        XmlEscape(value)
+    }
+}
+
+#[doc(hidden)]
+pub mod _escape {
+    use core::marker::PhantomData;
+
+    pub struct TagWrapper<E>(PhantomData<fn() -> *const E>);
+
+    impl<E> TagWrapper<E> {
+        pub fn new(_: &E) -> Self {
+            Self(PhantomData)
         }
     }
+
+    pub trait RawKind {
+        fn wrap<'a, T: super::RawMarker>(&self, value: &'a T) -> &'a T {
+            value
+        }
+    }
+
+    pub trait EscapeKind {
+        fn wrap<'a, T>(&self, value: &'a T) -> super::XmlEscape<&'a T> {
+            super::XmlEscape(value)
+        }
+    }
+
+    impl<T: super::RawMarker> RawKind for TagWrapper<T> {}
+
+    impl<T> EscapeKind for &TagWrapper<T> {}
 }

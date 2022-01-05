@@ -10,6 +10,11 @@
 // At your will you may redistribute the software under the terms of only one, two, or all three of the aforementioned licenses.
 
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
+
+//! Helper library for [NaTE](https://crates.io/crates/nate).
+//!
+//! This libary implements the `#![derive(Nate)]` annotation.
 
 use std::env::var;
 use std::fmt::Write;
@@ -29,6 +34,23 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{Attribute, DeriveInput, Expr, ExprLit, ExprPath, Lit};
 
+const HEAD: &str = "\
+    {\n\
+        fn fmt(&self, output: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {\n\
+            #[allow(unused_imports)]\n\
+            use ::nate::_escape::{\n\
+                RawKind as _,\n\
+                EscapeKind as _,\n\
+            };\n\
+";
+
+const TAIL: &str = "\n\
+            ::core::fmt::Result::Ok(())\n\
+        }\n\
+    }\n\
+};\n\
+";
+
 /// Implement [fmt::Display](core::fmt::Display) for a struct or enum.
 ///
 /// Usage:
@@ -37,7 +59,7 @@ use syn::{Attribute, DeriveInput, Expr, ExprLit, ExprPath, Lit};
 /// #[derive(Nate)]
 /// #[template(
 ///     path = "…",
-///     output = "…",
+///     generated = "…",
 /// )]
 /// struct Template { /* … */ }
 /// ```
@@ -45,7 +67,7 @@ use syn::{Attribute, DeriveInput, Expr, ExprLit, ExprPath, Lit};
 /// The path is relative to the cargo manifest dir (where you find Cargo.toml) of the calling
 /// project.
 ///
-/// The option debug output path is relative to the cargo manifest dir.
+/// The optional debug output path `generated` is relative to the cargo manifest dir.
 /// If supplied the generated code will be written into this file.
 /// An existing file fill be replaced!
 #[proc_macro_derive(Nate, attributes(template))]
@@ -63,7 +85,7 @@ pub fn derive_nate(input: TokenStream) -> TokenStream {
     let generics = &ast.generics;
     write!(
         content,
-        "impl {} ::core::fmt::Display for {} ",
+        "const _: () = {{\nimpl {} ::core::fmt::Display for {} ",
         quote!(#generics),
         ident
     )
@@ -73,13 +95,13 @@ pub fn derive_nate(input: TokenStream) -> TokenStream {
         for arg in ast.generics.params.iter() {
             match arg {
                 syn::GenericParam::Type(ty) => {
-                    write!(content, " {}, ", ty.ident.to_string()).unwrap();
+                    write!(content, " {}, ", ty.ident).unwrap();
                 }
                 syn::GenericParam::Lifetime(def) => {
-                    write!(content, " '{}, ", def.lifetime.ident.to_string()).unwrap();
+                    write!(content, " '{}, ", def.lifetime.ident).unwrap();
                 }
                 syn::GenericParam::Const(par) => {
-                    write!(content, " {}, ", par.ident.to_string()).unwrap();
+                    write!(content, " {}, ", par.ident).unwrap();
                 }
             }
         }
@@ -89,13 +111,9 @@ pub fn derive_nate(input: TokenStream) -> TokenStream {
         writeln!(content, " {} ", quote!(#where_clause)).unwrap();
     }
 
-    writeln!(
-        content,
-        "{{\nfn fmt(&self, output: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {{"
-    )
-    .unwrap();
+    write!(content, "{}", HEAD).unwrap();
     parse_file(&path, &mut content);
-    writeln!(content, "::core::fmt::Result::Ok(())\n}}\n}}").unwrap();
+    write!(content, "{}", TAIL).unwrap();
 
     if let Some(output) = output {
         let mut f = OpenOptions::new()
@@ -106,14 +124,6 @@ pub fn derive_nate(input: TokenStream) -> TokenStream {
             .expect("Could not open output file");
         write!(f, "{}", &content)
             .expect("Could not write to output file after successfully opening it");
-
-        if let Ok(path) = output.canonicalize() {
-            if let Some(path) = path.to_str() {
-                if let Ok(ts) = format!("::core::include! {{ {:?} }}", path).parse() {
-                    return ts;
-                }
-            }
-        }
     }
 
     content
@@ -235,7 +245,7 @@ fn parse_file(path: &Path, mut output: impl Write) {
     use DataSection::*;
 
     let buf = load_file(path);
-    for blocks in parse(path, &buf).into_iter() {
+    for (block_index, blocks) in parse(path, &buf).into_iter().enumerate() {
         match blocks {
             ParsedData::Code(blocks) => {
                 for code in blocks.into_iter() {
@@ -243,11 +253,43 @@ fn parse_file(path: &Path, mut output: impl Write) {
                 }
             }
             ParsedData::Data(blocks) => {
-                write!(output, "{{\n::core::write!(\noutput,\n\"").unwrap();
+                writeln!(output, "{{").unwrap();
+                for (data_index, data) in blocks.iter().enumerate() {
+                    match data {
+                        Data(_) => {}
+                        Raw(s) | Escaped(s) | Debug(s) | Verbose(s) => {
+                            writeln!(
+                                output,
+                                "let _name_arg_{}_{} = &({});",
+                                block_index, data_index, s
+                            )
+                            .unwrap();
+                        }
+                    }
+                }
+
+                for (data_index, data) in blocks.iter().enumerate() {
+                    match data {
+                        Data(_) | Raw(_) => {}
+                        Escaped(_) | Debug(_) | Verbose(_) => {
+                            writeln!(
+                                output,
+                                "let _name_arg_{block}_{data} = \
+                                (&::nate::_escape::TagWrapper::new(_name_arg_{block}_{data})).\
+                                wrap(_name_arg_{block}_{data});",
+                                block = block_index,
+                                data = data_index,
+                            )
+                            .unwrap();
+                        }
+                    }
+                }
+
+                write!(output, "::core::write!(\noutput,\n\"").unwrap();
                 for block in blocks.iter() {
                     match block {
                         Data(s) => {
-                            let s = format!("{:#?}", s).replace("{", "{{").replace("}", "}}");
+                            let s = format!("{:#?}", s).replace('{', "{{").replace('}', "}}");
                             write!(output, "{}", &s[1..s.len() - 1]).unwrap();
                         }
                         Raw(_) | Escaped(_) => write!(output, "{{}}").unwrap(),
@@ -256,12 +298,12 @@ fn parse_file(path: &Path, mut output: impl Write) {
                     }
                 }
                 writeln!(output, "\",").unwrap();
-                for data in blocks.into_iter() {
+
+                for (data_index, data) in blocks.into_iter().enumerate() {
                     match data {
                         Data(_) => {}
-                        Raw(s) => writeln!(output, "&({}),", s).unwrap(),
-                        Escaped(s) | Debug(s) | Verbose(s) => {
-                            writeln!(output, "::nate::XmlEscape(&({})),", s).unwrap();
+                        Raw(_) | Escaped(_) | Debug(_) | Verbose(_) => {
+                            writeln!(output, "_name_arg_{}_{},", block_index, data_index).unwrap()
                         }
                     }
                 }

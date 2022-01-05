@@ -11,6 +11,7 @@
 
 #![forbid(unsafe_code)]
 #![no_std]
+#![warn(missing_docs)]
 
 //! ## **N**ot **a** **T**emplate **E**ngine
 //!
@@ -123,7 +124,7 @@
 //! The generated code is stored in there even if there were parsing errors in the Rust code.
 //! The path is relative to the project root (where your Cargo.toml lives).
 
-pub use nate_common::XmlEscape;
+pub use nate_common::{RawMarker, XmlEscape, _escape};
 pub use nate_derive::Nate;
 
 #[cfg(doc)]
