@@ -28,9 +28,13 @@
 #![warn(unused_lifetimes)]
 #![warn(unused_results)]
 
+//! [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Kijewski/nate/CI)](https://github.com/Kijewski/nate/actions/workflows/ci.yml)
+//! [![Crates.io](https://img.shields.io/crates/v/nate-common)](https://crates.io/crates/nate-common)
+//! [![License](https://img.shields.io/crates/l/nate-common?color=informational)](/LICENSES)
+//!
 //! Helper library for [NaTE](https://crates.io/crates/nate).
 //!
-//! This libary code used during the runtime of the generated code.
+//! This libary is used during the runtime of the generated code.
 
 #[cfg(feature = "std")]
 extern crate std;

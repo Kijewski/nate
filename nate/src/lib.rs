@@ -28,6 +28,10 @@
 #![warn(unused_lifetimes)]
 #![warn(unused_results)]
 
+//! [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Kijewski/nate/CI)](https://github.com/Kijewski/nate/actions/workflows/ci.yml)
+//! [![Crates.io](https://img.shields.io/crates/v/nate)](https://crates.io/crates/nate)
+//! [![License](https://img.shields.io/crates/l/nate?color=informational)](/LICENSES)
+//!
 //! ## **N**ot **a** **T**emplate **E**ngine
 //!
 //! This is not a template engine, but sugar to implicitly call `write!(…)` like in PHP.
