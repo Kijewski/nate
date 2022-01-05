@@ -9,15 +9,40 @@
 // You have to accept AT LEAST one of the aforementioned licenses to use, copy, modify, and/or distribute this software.
 // At your will you may redistribute the software under the terms of only one, two, or all three of the aforementioned licenses.
 
-#![forbid(unsafe_code)]
-#![warn(missing_docs)]
 #![no_std]
+#![forbid(unsafe_code)]
+#![warn(absolute_paths_not_starting_with_crate)]
+#![warn(elided_lifetimes_in_paths)]
+#![warn(explicit_outlives_requirements)]
+#![warn(meta_variable_misuse)]
+#![warn(missing_copy_implementations)]
+#![warn(missing_debug_implementations)]
+#![warn(missing_docs)]
+#![warn(non_ascii_idents)]
+#![warn(noop_method_call)]
+#![warn(single_use_lifetimes)]
+#![warn(trivial_casts)]
+#![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
+#![warn(unused_extern_crates)]
+#![warn(unused_lifetimes)]
+#![warn(unused_results)]
 
 //! Helper library for [NaTE](https://crates.io/crates/nate).
 //!
 //! This libary code used during the runtime of the generated code.
 
-use core::fmt::{self, Write};
+#[cfg(feature = "std")]
+extern crate std;
+#[cfg(not(feature = "std"))]
+use core as std;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+extern crate alloc;
+#[cfg(feature = "std")]
+use std as alloc;
+
+use std::fmt::{self, Write};
 
 /// A wrapper around a [displayable][fmt::Display] type that makes it write out XML escaped.
 ///
@@ -80,31 +105,69 @@ impl fmt::Write for XmlEscapeWriter<'_, '_> {
     }
 }
 
-/// Types implething this marker don't need to be escaped.
+/// Types implementing this marker don't need to be escaped.
 pub trait RawMarker {}
-
-impl RawMarker for bool {}
-impl RawMarker for f32 {}
-impl RawMarker for f64 {}
-impl RawMarker for i128 {}
-impl RawMarker for i16 {}
-impl RawMarker for i32 {}
-impl RawMarker for i64 {}
-impl RawMarker for i8 {}
-impl RawMarker for isize {}
-impl RawMarker for u128 {}
-impl RawMarker for u16 {}
-impl RawMarker for u32 {}
-impl RawMarker for u64 {}
-impl RawMarker for u8 {}
-impl RawMarker for usize {}
 
 impl<T: RawMarker> RawMarker for &T {}
 
+impl<T> RawMarker for XmlEscape<T> {}
+
+impl RawMarker for std::primitive::bool {}
+impl RawMarker for std::primitive::f32 {}
+impl RawMarker for std::primitive::f64 {}
+impl RawMarker for std::primitive::i128 {}
+impl RawMarker for std::primitive::i16 {}
+impl RawMarker for std::primitive::i32 {}
+impl RawMarker for std::primitive::i64 {}
+impl RawMarker for std::primitive::i8 {}
+impl RawMarker for std::primitive::isize {}
+impl RawMarker for std::primitive::u128 {}
+impl RawMarker for std::primitive::u16 {}
+impl RawMarker for std::primitive::u32 {}
+impl RawMarker for std::primitive::u64 {}
+impl RawMarker for std::primitive::u8 {}
+impl RawMarker for std::primitive::usize {}
+
+impl RawMarker for std::num::NonZeroI8 {}
+impl RawMarker for std::num::NonZeroI16 {}
+impl RawMarker for std::num::NonZeroI32 {}
+impl RawMarker for std::num::NonZeroI64 {}
+impl RawMarker for std::num::NonZeroI128 {}
+impl RawMarker for std::num::NonZeroIsize {}
+impl RawMarker for std::num::NonZeroU8 {}
+impl RawMarker for std::num::NonZeroU16 {}
+impl RawMarker for std::num::NonZeroU32 {}
+impl RawMarker for std::num::NonZeroU64 {}
+impl RawMarker for std::num::NonZeroU128 {}
+impl RawMarker for std::num::NonZeroUsize {}
+
+impl<T: RawMarker> RawMarker for std::cell::Ref<'_, T> {}
+impl<T: RawMarker> RawMarker for std::cell::RefMut<'_, T> {}
+impl<T: RawMarker> RawMarker for std::num::Wrapping<T> {}
+impl<T: RawMarker> RawMarker for std::pin::Pin<T> {}
+
+#[cfg(feature = "alloc")]
+impl<T: RawMarker + alloc::borrow::ToOwned> RawMarker for alloc::borrow::Cow<'_, T> {}
+#[cfg(feature = "alloc")]
+impl<T: RawMarker> RawMarker for alloc::boxed::Box<T> {}
+#[cfg(feature = "alloc")]
+impl<T: RawMarker> RawMarker for alloc::rc::Rc<T> {}
+#[cfg(feature = "alloc")]
+impl<T: RawMarker> RawMarker for alloc::sync::Arc<T> {}
+
+#[cfg(feature = "std")]
+impl<T: RawMarker> RawMarker for std::sync::MutexGuard<'_, T> {}
+#[cfg(feature = "std")]
+impl<T: RawMarker> RawMarker for std::sync::RwLockReadGuard<'_, T> {}
+#[cfg(feature = "std")]
+impl<T: RawMarker> RawMarker for std::sync::RwLockWriteGuard<'_, T> {}
+
 #[doc(hidden)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct RawTag;
 
 #[doc(hidden)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct EscapeTag;
 
 #[doc(hidden)]
@@ -117,8 +180,10 @@ impl EscapeTag {
 
 #[doc(hidden)]
 pub mod _escape {
-    use core::marker::PhantomData;
+    use crate::std;
+    use std::marker::PhantomData;
 
+    #[derive(Debug, Clone, Copy, Default)]
     pub struct TagWrapper<E>(PhantomData<fn() -> *const E>);
 
     impl<E> TagWrapper<E> {

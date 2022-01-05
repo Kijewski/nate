@@ -9,9 +9,24 @@
 // You have to accept AT LEAST one of the aforementioned licenses to use, copy, modify, and/or distribute this software.
 // At your will you may redistribute the software under the terms of only one, two, or all three of the aforementioned licenses.
 
-#![forbid(unsafe_code)]
 #![no_std]
+#![forbid(unsafe_code)]
+#![warn(absolute_paths_not_starting_with_crate)]
+#![warn(elided_lifetimes_in_paths)]
+#![warn(explicit_outlives_requirements)]
+#![warn(meta_variable_misuse)]
+#![warn(missing_copy_implementations)]
+#![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
+#![warn(non_ascii_idents)]
+#![warn(noop_method_call)]
+#![warn(single_use_lifetimes)]
+#![warn(trivial_casts)]
+#![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
+#![warn(unused_extern_crates)]
+#![warn(unused_lifetimes)]
+#![warn(unused_results)]
 
 //! ## **N**ot **a** **T**emplate **E**ngine
 //!
