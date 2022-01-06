@@ -1,4 +1,4 @@
 #body {
-    color: {{self.color}};
+    color:      {{self.color}};
     background: {{self.background}};
 }

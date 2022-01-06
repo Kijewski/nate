@@ -40,9 +40,8 @@ use std::fmt::Write;
 use std::fs::OpenOptions;
 use std::io::{Read, Write as _};
 use std::path::Path;
-use std::str::from_utf8;
 
-use darling::FromDeriveInput;
+use darling::{FromDeriveInput, FromMeta};
 use memchr::{memchr, memchr2};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
@@ -108,7 +107,7 @@ pub fn derive_nate(input: TokenStream) -> TokenStream {
     };
 
     let base = var("CARGO_MANIFEST_DIR").unwrap();
-    let path = Path::new(&base).join(opts.path);
+    let path = Path::new(&base).join(&opts.path);
     let output = opts.generated.as_ref().map(|s| Path::new(&base).join(s));
 
     let mut content = String::new();
@@ -142,7 +141,7 @@ pub fn derive_nate(input: TokenStream) -> TokenStream {
     }
 
     write!(content, "{}", HEAD).unwrap();
-    parse_file(&path, &mut content);
+    parse_file(&path, &mut content, &opts);
     write!(content, "{}", TAIL).unwrap();
 
     if let Some(output) = output {
@@ -167,14 +166,68 @@ struct TemplateAttrs {
     path: String,
     #[darling(default)]
     generated: Option<String>,
+    #[darling(default)]
+    strip: Strip,
 }
 
-fn load_file(path: &Path) -> Vec<u8> {
-    let mut buf = Vec::new();
+/// Whitespace handling of the input source.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromMeta)]
+enum Strip {
+    /// Don't strip any spaces in the input.
+    None,
+    /// Remove a single single newline at the end of the input. This is the default.
+    Tail,
+    /// Remove all whitespaces at the front and back all lines, and remove empty lines.
+    Trim,
+    /// Like Trim, but also replace runs of whitespaces with a single space.
+    Eager,
+}
+
+impl Default for Strip {
+    fn default() -> Self {
+        Strip::None
+    }
+}
+
+impl Strip {
+    fn apply(self, mut src: String) -> String {
+        match self {
+            Strip::None => src,
+            Strip::Tail => {
+                if src.ends_with('\n') {
+                    let _ = src.pop();
+                }
+                src
+            }
+            Strip::Trim | Strip::Eager => {
+                let mut stripped = String::with_capacity(src.len());
+                for line in src.lines().map(|s| s.trim()).filter(|&s| !s.is_empty()) {
+                    if !stripped.is_empty() {
+                        stripped.push('\n');
+                    }
+                    if self == Strip::Eager {
+                        for (index, word) in line.split_ascii_whitespace().enumerate() {
+                            if index > 0 {
+                                stripped.push(' ');
+                            }
+                            stripped.push_str(word);
+                        }
+                    } else {
+                        stripped.push_str(line);
+                    }
+                }
+                stripped
+            }
+        }
+    }
+}
+
+fn load_file(path: &Path, opts: &TemplateAttrs) -> String {
+    let mut buf = String::new();
     match OpenOptions::new().read(true).open(&path) {
         Ok(mut f) => {
             let _ = f
-                .read_to_end(&mut buf)
+                .read_to_string(&mut buf)
                 .expect("Could not read source file even after successfully opening it.");
         }
         Err(err) => {
@@ -182,14 +235,14 @@ fn load_file(path: &Path) -> Vec<u8> {
             panic!();
         }
     }
-    buf
+    opts.strip.apply(buf)
 }
 
-fn parse_file(path: &Path, mut output: impl Write) {
+fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) {
     use DataSection::*;
 
-    let buf = load_file(path);
-    for (block_index, blocks) in parse(path, &buf).into_iter().enumerate() {
+    let buf = load_file(path, opts);
+    for (block_index, blocks) in parse(path, &buf, opts).into_iter().enumerate() {
         match blocks {
             ParsedData::Code(blocks) => {
                 for code in blocks.into_iter() {
@@ -267,13 +320,13 @@ fn parse_file(path: &Path, mut output: impl Write) {
     }
 }
 
-fn parse(path: &Path, i: &[u8]) -> Vec<ParsedData> {
+fn parse(path: &Path, i: &str, opts: &TemplateAttrs) -> Vec<ParsedData> {
     let mut output = Vec::new();
-    parse_into(path, i, &mut output);
+    parse_into(path, i, &mut output, opts);
     output
 }
 
-fn parse_into(path: &Path, i: &[u8], accu: &mut Vec<ParsedData>) {
+fn parse_into(path: &Path, i: &str, accu: &mut Vec<ParsedData>, opts: &TemplateAttrs) {
     let it = WsBlockIter::new(path, i)
         .map(|WsBlock(a, b, z)| match b {
             Block::Data(DataSection::Data(s)) => {
@@ -321,8 +374,8 @@ fn parse_into(path: &Path, i: &[u8], accu: &mut Vec<ParsedData>) {
                     }
                     _ => Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join(include_path),
                 };
-                let buf = load_file(&include_path);
-                parse_into(&include_path, &buf, accu);
+                let buf = load_file(&include_path, opts);
+                parse_into(&include_path, &buf, accu, opts);
             }
         }
     }
@@ -361,8 +414,8 @@ struct WsBlock(bool, Block, bool);
 
 struct WsBlockIter<'a> {
     path: &'a Path,
-    start: &'a [u8],
-    pos: &'a [u8],
+    start: &'a str,
+    pos: &'a str,
     next: Option<WsBlock>,
 }
 
@@ -377,7 +430,7 @@ impl Block {
 }
 
 impl<'a> WsBlockIter<'a> {
-    fn new(path: &'a Path, i: &'a [u8]) -> Self {
+    fn new(path: &'a Path, i: &'a str) -> Self {
         Self {
             path,
             start: i,
@@ -387,14 +440,14 @@ impl<'a> WsBlockIter<'a> {
     }
 }
 
-fn abort_with_nom_error(err: nom::Err<nom::error::Error<&[u8]>>, start: &[u8], path: &Path) -> ! {
+fn abort_with_nom_error(err: nom::Err<nom::error::Error<&str>>, start: &str, path: &Path) -> ! {
     match err {
         nom::Err::Incomplete(_) => {
             panic!("Impossible");
         }
         nom::Err::Error(err) | nom::Err::Failure(err) => {
             let offset = start.len() - err.input.len();
-            let (source_before, source_after) = from_utf8(start).unwrap().split_at(offset);
+            let (source_before, source_after) = start.split_at(offset);
 
             let source_after = match source_after.char_indices().enumerate().take(41).last() {
                 Some((40, (i, _))) => format!("{:?}...", &source_after[..i]),
@@ -444,85 +497,81 @@ impl Iterator for WsBlockIter<'_> {
     }
 }
 
-fn parse_ws_block(i: &[u8]) -> IResult<&[u8], WsBlock> {
+fn parse_ws_block(i: &str) -> IResult<&str, WsBlock> {
     alt((
         |i| {
-            let (i, (a, b, z)) = parse_block(i, b"{%", b"%}")?;
-            Ok((i, WsBlock(a, Block::Code(b), z)))
+            let (i, (a, b, z)) = parse_block(i, "{%", "%}")?;
+            Ok((i, WsBlock(a, Block::Code(b.to_owned()), z)))
         },
         |i| {
-            let (i, (a, _, z)) = parse_block(i, b"{#", b"#}")?;
+            let (i, (a, _, z)) = parse_block(i, "{#", "#}")?;
             Ok((i, WsBlock(a, Block::Comment, z)))
         },
         |i| {
-            let (next_i, (a, b, z)) = parse_block(i, b"{<", b">}")?;
+            let (next_i, (a, b, z)) = parse_block(i, "{<", ">}")?;
             match b.is_empty() {
-                false => Ok((next_i, WsBlock(a, Block::Include(b), z))),
+                false => Ok((next_i, WsBlock(a, Block::Include(b.to_owned()), z))),
                 true => Err(nom::Err::Error(error_position!(i, ErrorKind::NonEmpty))),
             }
         },
-        |i| parse_data_section(i, b"{{{{{", b"}}}}}", DataSection::Verbose),
-        |i| parse_data_section(i, b"{{{{", b"}}}}", DataSection::Debug),
-        |i| parse_data_section(i, b"{{{", b"}}}", DataSection::Raw),
-        |i| parse_data_section(i, b"{{", b"}}", DataSection::Escaped),
+        |i| parse_data_section(i, "{{{{{", "}}}}}", DataSection::Verbose),
+        |i| parse_data_section(i, "{{{{", "}}}}", DataSection::Debug),
+        |i| parse_data_section(i, "{{{", "}}}", DataSection::Raw),
+        |i| parse_data_section(i, "{{", "}}", DataSection::Escaped),
         parse_data,
     ))(i)
 }
 
 fn parse_block<'a>(
-    i: &'a [u8],
-    start: &'static [u8],
-    end: &'static [u8],
-) -> IResult<&'a [u8], (bool, String, bool)> {
-    let inner = |i: &'a [u8]| -> IResult<&'a [u8], (String, bool)> {
+    i: &'a str,
+    start: &'static str,
+    end: &'static str,
+) -> IResult<&'a str, (bool, &'a str, bool)> {
+    let inner = |i: &'a str| -> IResult<&'a str, (&'a str, bool)> {
         let mut start = 0;
         while (i.len() - start) >= end.len() {
-            if let Some(pos) = memchr2(end[0], b'-', &i[start..]) {
-                let (j, end) = opt(terminated(opt(tag(b"-")), tag(end)))(&i[start + pos..])?;
-                if let Some(trim) = end {
-                    return Ok((
-                        j,
-                        (
-                            from_utf8(&i[..start + pos]).unwrap().trim().to_owned(),
-                            trim.is_some(),
-                        ),
-                    ));
-                } else if pos > 0 {
-                    start += pos;
-                } else {
-                    start += 1;
-                }
+            let pos = match memchr2(end.as_bytes()[0], b'-', &i.as_bytes()[start..]) {
+                Some(pos) => pos,
+                None => break,
+            };
+
+            let (j, end) = opt(terminated(opt(tag("-")), tag(end)))(&i[start + pos..])?;
+            if let Some(trim) = end {
+                return Ok((j, ((&i[..start + pos]).trim(), trim.is_some())));
+            } else if pos > 0 {
+                start += pos;
             } else {
-                break;
+                start += 1;
             }
         }
-        Ok((b"", (from_utf8(i).unwrap().trim().to_owned(), false)))
+        Ok(("", (i, false)))
     };
-    let (i, (_, trim_start, (b, trim_end))) = tuple((tag(start), opt(tag(b"-")), inner))(i)?;
+    let (i, (_, trim_start, (b, trim_end))) = tuple((tag(start), opt(tag("-")), inner))(i)?;
     Ok((i, (trim_start.is_some(), b, trim_end)))
 }
 
 fn parse_data_section<'a>(
-    i: &'a [u8],
-    start: &'static [u8],
-    end: &'static [u8],
+    i: &'a str,
+    start: &'static str,
+    end: &'static str,
     kind: impl 'static + Fn(String) -> DataSection,
-) -> IResult<&'a [u8], WsBlock> {
+) -> IResult<&'a str, WsBlock> {
     let (j, (trim_start, b, trim_end)) = parse_block(i, start, end)?;
     if !b.is_empty() {
-        Ok((j, WsBlock(trim_start, Block::Data(kind(b)), trim_end)))
+        Ok((
+            j,
+            WsBlock(trim_start, Block::Data(kind(b.to_owned())), trim_end),
+        ))
     } else {
         Err(nom::Err::Error(error_position!(i, ErrorKind::NonEmpty)))
     }
 }
 
-fn parse_data<'a>(i: &'a [u8]) -> IResult<&'a [u8], WsBlock> {
-    let (i, b): (&'a [u8], _) = if let Some(pos) = memchr(b'{', &i[1..]) {
-        let (b, i) = i.split_at(pos + 1);
-        (i, b)
-    } else {
-        (b"", i)
+fn parse_data(i: &str) -> IResult<&str, WsBlock> {
+    let (b, i) = match memchr(b'{', &i.as_bytes()[1..]) {
+        Some(pos) => i.split_at(pos + 1),
+        None => (i, ""),
     };
-    let b = DataSection::Data(from_utf8(b).unwrap().to_owned());
+    let b = DataSection::Data(b.to_owned());
     Ok((i, WsBlock(false, Block::Data(b), false)))
 }
