@@ -42,6 +42,7 @@ use std::io::{Read, Write as _};
 use std::path::Path;
 use std::str::from_utf8;
 
+use darling::FromDeriveInput;
 use memchr::{memchr, memchr2};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
@@ -51,7 +52,7 @@ use nom::sequence::{terminated, tuple};
 use nom::{error_position, IResult};
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Attribute, DeriveInput, Expr, ExprLit, ExprPath, Lit};
+use syn::DeriveInput;
 
 const HEAD: &str = "\
     {\n\
@@ -94,11 +95,21 @@ pub fn derive_nate(input: TokenStream) -> TokenStream {
     let ast: DeriveInput = syn::parse(input).unwrap();
     let ident = ast.ident.to_string();
 
-    let TemplateAttrs { path, generated } = parse_attributes(ast.attrs);
+    let opts: TemplateAttrs = match TemplateAttrs::from_derive_input(&ast) {
+        Ok(opts) => opts,
+        Err(err) => {
+            let err = format!("{}", err);
+            return Into::into(quote!(
+                const _: () = {
+                    ::core::compile_error!(#err);
+                };
+            ));
+        }
+    };
 
     let base = var("CARGO_MANIFEST_DIR").unwrap();
-    let path = Path::new(&base).join(path);
-    let output = generated.map(|s| Path::new(&base).join(s));
+    let path = Path::new(&base).join(opts.path);
+    let output = opts.generated.as_ref().map(|s| Path::new(&base).join(s));
 
     let mut content = String::new();
     let generics = &ast.generics;
@@ -150,99 +161,12 @@ pub fn derive_nate(input: TokenStream) -> TokenStream {
         .expect("Could not parse generated code as Rust source.")
 }
 
+#[derive(Debug, Default, FromDeriveInput)]
+#[darling(attributes(template))]
 struct TemplateAttrs {
     path: String,
+    #[darling(default)]
     generated: Option<String>,
-}
-
-fn parse_attributes(attrs: Vec<Attribute>) -> TemplateAttrs {
-    let mut arguments = None;
-    for attr in attrs.into_iter() {
-        let Attribute {
-            path: syn::Path { segments, .. },
-            tokens,
-            ..
-        } = attr;
-        if segments.len() == 1 && segments.first().unwrap().ident == "template" {
-            if arguments.is_some() {
-                panic!("Duplicated #[template(…)] attribute.");
-            }
-            arguments = Some(tokens);
-        }
-    }
-    let arguments = arguments.expect("Missing #[template(…)] attribute.");
-
-    let mut path = None;
-    let mut generated = None;
-
-    let mut handle_arg = |e: &Expr| {
-        let assign = if let Expr::Assign(a) = e {
-            a
-        } else {
-            eprintln!("Expected assignment in #[template(…)] attribute.");
-            panic!();
-        };
-
-        let left = match &*assign.left {
-            Expr::Path(ExprPath {
-                path: syn::Path { segments, .. },
-                ..
-            }) if segments.len() == 1 => segments.first().unwrap().ident.to_string(),
-            _ => {
-                eprintln!("Expected string literal on RHS in #[template(…)] attribute.");
-                panic!()
-            }
-        };
-
-        let right = if let Expr::Lit(ExprLit {
-            lit: Lit::Str(s), ..
-        }) = &*assign.right
-        {
-            s.value()
-        } else {
-            eprintln!("Expected string literal on RHS in #[template(…)] attribute.");
-            panic!()
-        };
-
-        match left.as_str() {
-            "path" => {
-                if path.replace(right).is_some() {
-                    eprintln!("Duplicated key 'path' in #[template(…)] attribute.");
-                    panic!()
-                }
-            }
-            "generated" => {
-                if generated.replace(right).is_some() {
-                    eprintln!("Duplicated key 'generated' in #[template(…)] attribute.");
-                    panic!()
-                }
-            }
-            s => {
-                eprintln!("Unexpected key {:?} in #[template(…)] attribute.", s);
-                panic!()
-            }
-        }
-    };
-
-    match syn::parse2(arguments)
-        .expect("In #[template(…)] you need to use comma separated key=\"value\" pairs.")
-    {
-        Expr::Paren(p) => handle_arg(&*p.expr),
-        Expr::Tuple(g) => {
-            for e in g.elems {
-                handle_arg(&e);
-            }
-        }
-        _ => {
-            eprintln!("Expected arguments in #[template(…)] attribute.");
-            panic!();
-        }
-    }
-
-    TemplateAttrs {
-        path: path.expect("Expected key 'path' in #[template(…)] attribute."),
-        generated,
-    }
 }
 
 fn load_file(path: &Path) -> Vec<u8> {
@@ -280,7 +204,7 @@ fn parse_file(path: &Path, mut output: impl Write) {
                         Raw(s) | Escaped(s) | Debug(s) | Verbose(s) => {
                             writeln!(
                                 output,
-                                "let _name_arg_{}_{} = &({});",
+                                "let _nate_arg_{}_{} = &({});",
                                 block_index, data_index, s
                             )
                             .unwrap();
@@ -294,9 +218,9 @@ fn parse_file(path: &Path, mut output: impl Write) {
                         Escaped(_) => {
                             writeln!(
                                 output,
-                                "let _name_arg_{block}_{data} = \
-                                    (&::nate::_escape::TagWrapper::new(_name_arg_{block}_{data})).\
-                                    wrap(_name_arg_{block}_{data});",
+                                "let _nate_arg_{block}_{data} = \
+                                    (&::nate::_escape::TagWrapper::new(_nate_arg_{block}_{data})).\
+                                    wrap(_nate_arg_{block}_{data});",
                                 block = block_index,
                                 data = data_index,
                             )
@@ -305,8 +229,8 @@ fn parse_file(path: &Path, mut output: impl Write) {
                         Debug(_) | Verbose(_) => {
                             writeln!(
                                 output,
-                                "let _name_arg_{block}_{data} = \
-                                    ::nate::XmlEscape(_name_arg_{block}_{data});",
+                                "let _nate_arg_{block}_{data} = \
+                                    ::nate::XmlEscape(_nate_arg_{block}_{data});",
                                 block = block_index,
                                 data = data_index,
                             )
@@ -333,7 +257,7 @@ fn parse_file(path: &Path, mut output: impl Write) {
                     match data {
                         Data(_) => {}
                         Raw(_) | Escaped(_) | Debug(_) | Verbose(_) => {
-                            writeln!(output, "_name_arg_{}_{},", block_index, data_index).unwrap()
+                            writeln!(output, "_nate_arg_{}_{},", block_index, data_index).unwrap()
                         }
                     }
                 }

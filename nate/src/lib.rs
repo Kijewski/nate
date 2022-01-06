@@ -139,7 +139,7 @@
 //!
 //! Blocks don't need to be closed at the end of the file.
 //!
-//! To debug any errors you can add an argument as in `#[template(output = "some/path/generated.rs")]`.
+//! To debug any errors you can add an argument as in `#[template(generated = "some/path/generated.rs")]`.
 //! The generated code is stored in there even if there were parsing errors in the Rust code.
 //! The path is relative to the project root (where your Cargo.toml lives).
 
