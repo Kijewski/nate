@@ -45,13 +45,13 @@ use std::io::{Read, Write as _};
 use std::path::Path;
 
 use darling::{FromDeriveInput, FromMeta};
-use memchr::{memchr, memchr2};
 use nom::branch::alt;
-use nom::bytes::complete::tag;
-use nom::combinator::opt;
+use nom::bytes::complete::{tag, take_until};
+use nom::combinator::{cut, opt, rest};
 use nom::error::ErrorKind;
-use nom::sequence::{terminated, tuple};
-use nom::{error_position, IResult};
+use nom::sequence::{pair, preceded};
+use nom::{error_position, IResult, InputTake};
+use nom_locate::LocatedSpan;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::DeriveInput;
@@ -426,7 +426,8 @@ fn parse_into(
     accu: &mut Vec<ParsedData>,
     opts: &TemplateAttrs,
 ) -> std::fmt::Result {
-    let it = WsBlockIter::new(path, i)
+    let i = LocatedSpan::new_extra(i, (i, path));
+    let it = WsBlockIter::new(i)
         .map(|WsBlock(a, b, z)| match b {
             Block::Data(DataSection::Data(s)) => {
                 let t = match (a, z) {
@@ -492,12 +493,15 @@ const _: &'static [::nate::details::std::primitive::u8] = \
     Ok(())
 }
 
+type Span<'a> = LocatedSpan<&'a str, (&'a str, &'a Path)>;
+
 #[derive(Debug)]
 enum ParsedData {
     Code(Vec<String>),
     Data(Vec<DataSection>),
 }
 
+// TODO: use Span instead if String
 #[derive(Debug, Clone)]
 enum DataSection {
     Data(String),
@@ -518,9 +522,7 @@ enum Block {
 struct WsBlock(bool, Block, bool);
 
 struct WsBlockIter<'a> {
-    path: &'a Path,
-    start: &'a str,
-    pos: &'a str,
+    pos: Span<'a>,
     next: Option<WsBlock>,
 }
 
@@ -535,39 +537,34 @@ impl Block {
 }
 
 impl<'a> WsBlockIter<'a> {
-    fn new(path: &'a Path, i: &'a str) -> Self {
+    fn new(pos: Span<'a>) -> Self {
         Self {
-            path,
-            start: i,
-            pos: i,
+            pos,
             next: Some(WsBlock(false, Block::Comment, false)),
         }
     }
 }
 
-fn abort_with_nom_error(err: nom::Err<nom::error::Error<&str>>, start: &str, path: &Path) -> ! {
+fn abort_with_nom_error(err: nom::Err<nom::error::Error<Span<'_>>>) -> ! {
     match err {
         nom::Err::Incomplete(_) => {
             panic!("Impossible");
         },
         nom::Err::Error(err) | nom::Err::Failure(err) => {
-            let offset = start.len() - err.input.len();
-            let (source_before, source_after) = start.split_at(offset);
+            let input = err.input;
+            let (source, path) = input.extra;
+            let row = input.location_line();
+            let column = input.naive_get_utf8_column();
+            let source_after = &source[source.len() - input.len()..];
 
             let source_after = match source_after.char_indices().enumerate().take(41).last() {
                 Some((40, (i, _))) => format!("{:?}...", &source_after[..i]),
                 _ => format!("{:?}", source_after),
             };
 
-            let (row, last_line) = source_before.lines().enumerate().last().unwrap();
-            let column = last_line.chars().count();
-
             panic!(
                 "Problems parsing template source {:?} at row {}, column {} near:\n{}",
-                path,
-                row + 1,
-                column,
-                source_after,
+                path, row, column, source_after,
             );
         },
     }
@@ -584,7 +581,7 @@ impl Iterator for WsBlockIter<'_> {
                     Some(b)
                 },
                 Err(err) => {
-                    abort_with_nom_error(err, self.start, self.path);
+                    abort_with_nom_error(err);
                 },
             }
         } else {
@@ -602,11 +599,11 @@ impl Iterator for WsBlockIter<'_> {
     }
 }
 
-fn parse_ws_block(i: &str) -> IResult<&str, WsBlock> {
+fn parse_ws_block(i: Span<'_>) -> IResult<Span<'_>, WsBlock> {
     alt((
         |i| {
             let (i, (a, b, z)) = parse_block(i, "{%", "%}")?;
-            Ok((i, WsBlock(a, Block::Code(b.to_owned()), z)))
+            Ok((i, WsBlock(a, Block::Code((*b).to_owned()), z)))
         },
         |i| {
             let (i, (a, _, z)) = parse_block(i, "{#", "#}")?;
@@ -615,8 +612,8 @@ fn parse_ws_block(i: &str) -> IResult<&str, WsBlock> {
         |i| {
             let (next_i, (a, b, z)) = parse_block(i, "{<", ">}")?;
             match b.is_empty() {
-                false => Ok((next_i, WsBlock(a, Block::Include(b.to_owned()), z))),
-                true => Err(nom::Err::Error(error_position!(i, ErrorKind::NonEmpty))),
+                false => Ok((next_i, WsBlock(a, Block::Include((*b).to_owned()), z))),
+                true => Err(nom::Err::Failure(error_position!(i, ErrorKind::NonEmpty))),
             }
         },
         |i| parse_data_section(i, "{{{{{", "}}}}}", DataSection::Verbose),
@@ -627,56 +624,77 @@ fn parse_ws_block(i: &str) -> IResult<&str, WsBlock> {
     ))(i)
 }
 
+fn trim_span(s: Span<'_>) -> Span<'_> {
+    let s = match s.len() - s.trim_start().len() {
+        0 => s,
+        trim => s.take_split(trim).0,
+    };
+    s.take(s.trim_end().len())
+}
+
 fn parse_block<'a>(
-    i: &'a str,
+    i: Span<'a>,
     start: &'static str,
     end: &'static str,
-) -> IResult<&'a str, (bool, &'a str, bool)> {
-    let inner = |i: &'a str| -> IResult<&'a str, (&'a str, bool)> {
-        let mut start = 0;
-        while (i.len() - start) >= end.len() {
-            let pos = match memchr2(end.as_bytes()[0], b'-', &i.as_bytes()[start..]) {
-                Some(pos) => pos,
-                None => break,
-            };
+) -> IResult<Span<'a>, (bool, Span<'a>, bool)> {
+    let inner = |i: Span<'a>| -> IResult<Span<'a>, (Span<'a>, bool)> {
+        let (i, inner) = opt(take_until(end))(i)?;
+        let inner = match inner {
+            Some(inner) => inner,
+            None => {
+                let (i, inner) = rest(i)?;
+                return Ok((i, (inner, false)));
+            },
+        };
 
-            let (j, end) = opt(terminated(opt(tag("-")), tag(end)))(&i[start + pos..])?;
-            if let Some(trim) = end {
-                return Ok((j, ((&i[..start + pos]).trim(), trim.is_some())));
-            } else if pos > 0 {
-                start += pos;
-            } else {
-                start += 1;
-            }
-        }
-        Ok(("", (i, false)))
+        let (i, _) = i.take_split(end.len());
+        let (inner, trim) = match (*inner).ends_with("-") {
+            true => (inner.take(inner.len() - 1), true),
+            false => (inner, false),
+        };
+
+        let inner = trim_span(inner);
+        Ok((i, (inner, trim)))
     };
-    let (i, (_, trim_start, (b, trim_end))) = tuple((tag(start), opt(tag("-")), inner))(i)?;
+
+    let (i, (trim_start, (b, trim_end))) =
+        preceded(tag(start), cut(pair(opt(tag("-")), inner)))(i)?;
     Ok((i, (trim_start.is_some(), b, trim_end)))
 }
 
 fn parse_data_section<'a>(
-    i: &'a str,
+    i: Span<'a>,
     start: &'static str,
     end: &'static str,
     kind: impl 'static + Fn(String) -> DataSection,
-) -> IResult<&'a str, WsBlock> {
+) -> IResult<Span<'a>, WsBlock> {
     let (j, (trim_start, b, trim_end)) = parse_block(i, start, end)?;
     if !b.is_empty() {
         Ok((
             j,
-            WsBlock(trim_start, Block::Data(kind(b.to_owned())), trim_end),
+            WsBlock(trim_start, Block::Data(kind((*b).to_owned())), trim_end),
         ))
     } else {
-        Err(nom::Err::Error(error_position!(i, ErrorKind::NonEmpty)))
+        Err(nom::Err::Failure(error_position!(i, ErrorKind::NonEmpty)))
     }
 }
 
-fn parse_data(i: &str) -> IResult<&str, WsBlock> {
-    let (b, i) = match memchr(b'{', &i.as_bytes()[1..]) {
-        Some(pos) => i.split_at(pos + 1),
-        None => (i, ""),
-    };
-    let b = DataSection::Data(b.to_owned());
+fn parse_data(i: Span<'_>) -> IResult<Span<'_>, WsBlock> {
+    let mut offset = i.char_indices();
+
+    // TODO: make pretty once `#![feature(let_chains_2)]` (RFC 2497) is ready
+    // rationale: no need to use `let offset = offset.fuse()`
+    if offset.next().is_some() {
+        if let Some((offset, _)) = offset.next() {
+            if let Some(inner) = opt(take_until("{"))(i.take_split(offset).0)?.1 {
+                let (i, b) = i.take_split(inner.len() + offset);
+                let b = DataSection::Data((*b).to_owned());
+                return Ok((i, WsBlock(false, Block::Data(b), false)));
+            }
+        }
+    }
+
+    let (i, b) = rest(i)?;
+    let b = DataSection::Data((*b).to_owned());
     Ok((i, WsBlock(false, Block::Data(b), false)))
 }

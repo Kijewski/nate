@@ -12,6 +12,7 @@ keywords = ["html", "template", "no-std"]
 readme = "README.md"
 
 [dependencies]
+# optional features:
 document-features = { version = "=0.1.0", optional = true }
 
 [features]
@@ -28,4 +29,3 @@ docsrs = ["document-features"]
 
 [package.metadata.docs.rs]
 features = ["alloc", "std", "docsrs"]
-all-features = true

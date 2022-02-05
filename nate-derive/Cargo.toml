@@ -16,7 +16,16 @@ proc-macro = true
 
 [dependencies]
 darling = "0.13"
-memchr = "2"
-nom = ">= 6, < 8"
+nom = "7"
+nom_locate = "4"
 quote = "1"
 syn = { version = "1", features = ["full"] }
+
+[features]
+default = []
+
+# Internal feature, used when generating docs. *You* are not supposed to enable this feature!
+docsrs = []
+
+[package.metadata.docs.rs]
+features = ["docsrs"]
