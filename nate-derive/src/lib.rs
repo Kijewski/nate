@@ -160,7 +160,7 @@ const _: () = {{
     )
     .unwrap();
 
-    parse_file(&path, &mut content, &opts);
+    parse_file(&path, &mut content, &opts).unwrap();
     write!(content, "{}", TAIL).unwrap();
 
     if let Some(output) = output {
@@ -259,15 +259,15 @@ fn load_file(path: &Path) -> String {
     buf
 }
 
-fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) {
+fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) -> std::fmt::Result {
     use DataSection::*;
 
     let buf = load_file(path);
-    for (block_index, blocks) in parse(path, &buf, opts).into_iter().enumerate() {
+    for (block_index, blocks) in parse(path, &buf, opts)?.into_iter().enumerate() {
         match blocks {
             ParsedData::Code(blocks) => {
                 for code in blocks.into_iter() {
-                    writeln!(output, "{}", code).unwrap();
+                    writeln!(output, "{}", code)?;
                 }
             },
             ParsedData::Data(blocks) => {
@@ -276,22 +276,22 @@ fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) {
                     Raw(_) | Escaped(_) | Debug(_) | Verbose(_) => true,
                 });
 
-                writeln!(output, "{{").unwrap();
+                writeln!(output, "{{")?;
 
                 if any_arg {
                     // match (&(expr1), &(expr2), …) { … }
-                    writeln!(output, "match (").unwrap();
+                    writeln!(output, "match (")?;
                     for data in &blocks {
                         match data {
                             Data(_) => {},
                             Raw(s) | Escaped(s) | Debug(s) | Verbose(s) => {
-                                writeln!(output, "&({}),", s).unwrap();
+                                writeln!(output, "&({}),", s)?;
                             },
                         }
                     }
 
                     // (arg1, arg2, …) => { … }
-                    writeln!(output, ") {{\n(").unwrap();
+                    writeln!(output, ") {{\n(")?;
                     for (data_index, data) in blocks.iter().enumerate() {
                         match data {
                             Data(_) => {},
@@ -301,14 +301,13 @@ fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) {
                                     "_nate_{block}_{data},",
                                     block = block_index,
                                     data = data_index,
-                                )
-                                .unwrap();
+                                )?;
                             },
                         }
                     }
 
                     // match (XmlEscape(arg1), XmlEscape(arg2), …) { … }
-                    writeln!(output, ") => match (").unwrap();
+                    writeln!(output, ") => match (")?;
                     for (data_index, data) in blocks.iter().enumerate() {
                         match data {
                             Data(_) => {},
@@ -318,8 +317,7 @@ fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) {
                                     "_nate_{block}_{data},",
                                     block = block_index,
                                     data = data_index,
-                                )
-                                .unwrap();
+                                )?;
                             },
                             Escaped(_) => {
                                 writeln!(
@@ -328,8 +326,7 @@ fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) {
                                         wrap(_nate_{block}_{data}),",
                                     block = block_index,
                                     data = data_index,
-                                )
-                                .unwrap();
+                                )?;
                             },
                             Debug(_) | Verbose(_) => {
                                 writeln!(
@@ -337,14 +334,13 @@ fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) {
                                     "::nate::XmlEscape(_nate_{block}_{data}),",
                                     block = block_index,
                                     data = data_index,
-                                )
-                                .unwrap();
+                                )?;
                             },
                         }
                     }
 
                     // (arg1, arg2, …) => { … }
-                    writeln!(output, ") {{\n(").unwrap();
+                    writeln!(output, ") {{\n(")?;
                     for (data_index, data) in blocks.iter().enumerate() {
                         match data {
                             Data(_) => {},
@@ -354,52 +350,47 @@ fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) {
                                     "_nate_{block}_{data},",
                                     block = block_index,
                                     data = data_index,
-                                )
-                                .unwrap();
+                                )?;
                             },
                         }
                     }
-                    write!(output, ") => {{").unwrap();
+                    write!(output, ") => {{")?;
                 }
 
                 // "…{:?}…{}…"
                 write!(
                     output,
                     "output.write_fmt(::nate::details::std::format_args!(\n\""
-                )
-                .unwrap();
+                )?;
                 for (data_index, data) in blocks.iter().enumerate() {
                     match data {
                         Data(s) => {
                             let s = format!("{:#?}", s).replace('{', "{{").replace('}', "}}");
-                            write!(output, "{}", &s[1..s.len() - 1]).unwrap();
+                            write!(output, "{}", &s[1..s.len() - 1])?;
                         },
                         Raw(_) | Escaped(_) => write!(
                             output,
                             "{{_nate_{block}_{data}}}",
                             block = block_index,
                             data = data_index
-                        )
-                        .unwrap(),
+                        )?,
                         Debug(_) => write!(
                             output,
                             "{{_nate_{block}_{data}:?}}",
                             block = block_index,
                             data = data_index
-                        )
-                        .unwrap(),
+                        )?,
                         Verbose(_) => write!(
                             output,
                             "{{_nate_{block}_{data}:#?}}",
                             block = block_index,
                             data = data_index
-                        )
-                        .unwrap(),
+                        )?,
                     }
                 }
 
                 // arg1 = arg1, arg2 = arg2, …
-                writeln!(output, "\",").unwrap();
+                writeln!(output, "\",")?;
                 for (data_index, data) in blocks.into_iter().enumerate() {
                     match data {
                         Data(_) => {},
@@ -408,27 +399,33 @@ fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) {
                             "_nate_{block}_{data} = _nate_{block}_{data},",
                             block = block_index,
                             data = data_index
-                        )
-                        .unwrap(),
+                        )?,
                     }
                 }
-                writeln!(output, "))?;\n}}").unwrap();
+                writeln!(output, "))?;\n}}")?;
 
                 if any_arg {
-                    writeln!(output, "}}\n}}\n}}").unwrap();
+                    writeln!(output, "}}\n}}\n}}")?;
                 }
             },
         }
     }
+
+    Ok(())
 }
 
-fn parse(path: &Path, i: &str, opts: &TemplateAttrs) -> Vec<ParsedData> {
+fn parse(path: &Path, i: &str, opts: &TemplateAttrs) -> Result<Vec<ParsedData>, std::fmt::Error> {
     let mut output = Vec::new();
-    parse_into(path, i, &mut output, opts);
-    output
+    parse_into(path, i, &mut output, opts)?;
+    Ok(output)
 }
 
-fn parse_into(path: &Path, i: &str, accu: &mut Vec<ParsedData>, opts: &TemplateAttrs) {
+fn parse_into(
+    path: &Path,
+    i: &str,
+    accu: &mut Vec<ParsedData>,
+    opts: &TemplateAttrs,
+) -> std::fmt::Result {
     let it = WsBlockIter::new(path, i)
         .map(|WsBlock(a, b, z)| match b {
             Block::Data(DataSection::Data(s)) => {
@@ -477,10 +474,11 @@ const _: &'static [::nate::details::std::primitive::u8] = \
                     Some(d) if d.eq(".") || d.eq("..") => {
                         path.parent().unwrap_or(path).join(include_path)
                     },
-                    _ => Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join(include_path),
+                    _ => Path::new(&var("CARGO_MANIFEST_DIR").map_err(|_| std::fmt::Error)?)
+                        .join(include_path),
                 };
                 let buf = load_file(&include_path);
-                parse_into(&include_path, &buf, accu, opts);
+                parse_into(&include_path, &buf, accu, opts)?;
             },
         }
     }
@@ -490,6 +488,8 @@ const _: &'static [::nate::details::std::primitive::u8] = \
         Some(ParsedData::Code(blocks)) => blocks.push(s),
         _ => accu.push(ParsedData::Code(vec![s])),
     }
+
+    Ok(())
 }
 
 #[derive(Debug)]
