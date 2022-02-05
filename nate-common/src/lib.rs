@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #![no_std]
-#![cfg_attr(feature = "doc_cfg", feature(doc_cfg))]
+#![cfg_attr(feature = "docsrs", feature(doc_cfg))]
 #![forbid(unsafe_code)]
 #![warn(absolute_paths_not_starting_with_crate)]
 #![warn(elided_lifetimes_in_paths)]
@@ -40,6 +40,9 @@
 //! Helper library for [NaTE](https://crates.io/crates/nate).
 //!
 //! This libary is used during the runtime of the generated code.
+//!
+//! ## Feature flags
+#![cfg_attr(feature = "docsrs", doc = ::document_features::document_features!())]
 
 #[doc(hidden)]
 pub mod details;
@@ -71,14 +74,14 @@ pub trait RenderInto {
 
     /// Render the output into an io::Write object
     #[cfg(feature = "alloc")]
-    #[cfg_attr(feature = "doc_cfg", doc(cfg(any(feature = "alloc", feature = "std"))))]
+    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "alloc", feature = "std"))))]
     fn render_io(&self, output: impl alloc::io::Write) -> fmt::Result {
         self.render_into(details::WriteIo(output))
     }
 
     /// Render the output into a new string
     #[cfg(feature = "alloc")]
-    #[cfg_attr(feature = "doc_cfg", doc(cfg(any(feature = "alloc", feature = "std"))))]
+    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "alloc", feature = "std"))))]
     fn render_string(&self) -> Result<alloc::string::String, fmt::Error> {
         let mut result = String::new();
         self.render_fmt(&mut result)?;
@@ -87,7 +90,7 @@ pub trait RenderInto {
 
     /// Render the output into a new vector
     #[cfg(feature = "alloc")]
-    #[cfg_attr(feature = "doc_cfg", doc(cfg(any(feature = "alloc", feature = "std"))))]
+    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "alloc", feature = "std"))))]
     fn render_bytes(&self) -> Result<alloc::vec::Vec<u8>, fmt::Error> {
         let mut result = Vec::new();
         self.render_io(&mut result)?;

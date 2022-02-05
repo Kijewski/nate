@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #![no_std]
+#![cfg_attr(feature = "docsrs", feature(doc_cfg))]
 #![forbid(unsafe_code)]
 #![warn(absolute_paths_not_starting_with_crate)]
 #![warn(elided_lifetimes_in_paths)]
@@ -30,6 +31,7 @@
 #![warn(unused_extern_crates)]
 #![warn(unused_lifetimes)]
 #![warn(unused_results)]
+#![no_implicit_prelude]
 
 //! [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Kijewski/nate/CI)](https://github.com/Kijewski/nate/actions/workflows/ci.yml)
 //! [![Crates.io](https://img.shields.io/crates/v/nate)](https://crates.io/crates/nate)
@@ -145,8 +147,11 @@
 //! To debug any errors you can add an argument as in `#[template(generated = "some/path/generated.rs")]`.
 //! The generated code is stored in there even if there were parsing errors in the Rust code.
 //! The path is relative to the project root (where your Cargo.toml lives).
+//!
+//! ## Feature flags
+#![cfg_attr(feature = "docsrs", doc = ::document_features::document_features!())]
 
+pub use ::nate_common::{details, RawMarker, RenderInto, WriteAny, XmlEscape};
+pub use ::nate_derive::Nate;
 #[cfg(doc)]
 use details::std::fmt;
-pub use nate_common::{details, RawMarker, RenderInto, WriteAny, XmlEscape};
-pub use nate_derive::Nate;

@@ -15,8 +15,20 @@ readme = "README.md"
 nate-common = { path = "../nate-common", version = "0.1.9", default-features = false }
 nate-derive = { path = "../nate-derive", version = "0.1.9", default-features = false }
 
+document-features = { version = "=0.1.0", optional = true }
+
 [features]
-default = ["std"]
+default = ["std", "alloc"]
+## disable [`#![no_std]`](https://docs.rust-embedded.org/book/intro/no-std.html), implies `alloc`
+##
+std = ["alloc", "nate-common/std"]
+## enable features found in the [alloc](https://doc.rust-lang.org/stable/alloc/) crate, e.g. std::io::Write
+##
 alloc = ["nate-common/alloc"]
-std = ["nate-common/std"]
-doc_cfg = ["nate-common/doc_cfg"]
+
+# Internal feature, used when generating docs. *You* are not supposed to enable this feature!
+docsrs = ["nate-common/docsrs", "document-features"]
+
+[package.metadata.docs.rs]
+features = ["alloc", "std", "docsrs"]
+all-features = true

@@ -48,19 +48,24 @@ impl<T: RawMarker> RawMarker for std::num::Wrapping<T> {}
 impl<T: RawMarker> RawMarker for std::pin::Pin<T> {}
 
 #[cfg(feature = "alloc")]
-#[cfg_attr(feature = "doc_cfg", doc(cfg(any(feature = "alloc", feature = "std"))))]
 const _: () = {
+    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: RawMarker + alloc::borrow::ToOwned> RawMarker for alloc::borrow::Cow<'_, T> {}
+    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: RawMarker> RawMarker for alloc::boxed::Box<T> {}
+    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: RawMarker> RawMarker for alloc::rc::Rc<T> {}
+    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: RawMarker> RawMarker for alloc::sync::Arc<T> {}
 };
 
 #[cfg(feature = "std")]
-#[cfg_attr(feature = "doc_cfg", doc(cfg(feature = "std")))]
 const _: () = {
+    #[cfg_attr(feature = "docsrs", doc(cfg(feature = "std")))]
     impl<T: RawMarker> RawMarker for std::sync::MutexGuard<'_, T> {}
+    #[cfg_attr(feature = "docsrs", doc(cfg(feature = "std")))]
     impl<T: RawMarker> RawMarker for std::sync::RwLockReadGuard<'_, T> {}
+    #[cfg_attr(feature = "docsrs", doc(cfg(feature = "std")))]
     impl<T: RawMarker> RawMarker for std::sync::RwLockWriteGuard<'_, T> {}
 };
 

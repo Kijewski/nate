@@ -38,6 +38,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "document-features"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7b262786be72873f218389b0164de3c646a91f9e3627790df5b70f7d157920b"
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -65,6 +71,7 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 name = "nate"
 version = "0.1.9"
 dependencies = [
+ "document-features",
  "nate-common",
  "nate-derive",
 ]
@@ -72,6 +79,9 @@ dependencies = [
 [[package]]
 name = "nate-common"
 version = "0.1.9"
+dependencies = [
+ "document-features",
+]
 
 [[package]]
 name = "nate-derive"
