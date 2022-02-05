@@ -271,48 +271,98 @@ fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) {
                 }
             },
             ParsedData::Data(blocks) => {
+                let any_arg = blocks.iter().any(|data| match data {
+                    Data(_) => false,
+                    Raw(_) | Escaped(_) | Debug(_) | Verbose(_) => true,
+                });
+
                 writeln!(output, "{{").unwrap();
-                for (data_index, data) in blocks.iter().enumerate() {
-                    match data {
-                        Data(_) => {},
-                        Raw(s) | Escaped(s) | Debug(s) | Verbose(s) => {
-                            writeln!(
-                                output,
-                                "let _nate_arg_{}_{} = &({});",
-                                block_index, data_index, s
-                            )
-                            .unwrap();
-                        },
+
+                if any_arg {
+                    // match (&(expr1), &(expr2), …) { … }
+                    writeln!(output, "match (").unwrap();
+                    for data in &blocks {
+                        match data {
+                            Data(_) => {},
+                            Raw(s) | Escaped(s) | Debug(s) | Verbose(s) => {
+                                writeln!(output, "&({}),", s).unwrap();
+                            },
+                        }
                     }
+
+                    // (arg1, arg2, …) => { … }
+                    writeln!(output, ") {{\n(").unwrap();
+                    for (data_index, data) in blocks.iter().enumerate() {
+                        match data {
+                            Data(_) => {},
+                            Raw(_) | Escaped(_) | Debug(_) | Verbose(_) => {
+                                writeln!(
+                                    output,
+                                    "_nate_{block}_{data},",
+                                    block = block_index,
+                                    data = data_index,
+                                )
+                                .unwrap();
+                            },
+                        }
+                    }
+
+                    // match (XmlEscape(arg1), XmlEscape(arg2), …) { … }
+                    writeln!(output, ") => match (").unwrap();
+                    for (data_index, data) in blocks.iter().enumerate() {
+                        match data {
+                            Data(_) => {},
+                            Raw(_) => {
+                                writeln!(
+                                    output,
+                                    "_nate_{block}_{data},",
+                                    block = block_index,
+                                    data = data_index,
+                                )
+                                .unwrap();
+                            },
+                            Escaped(_) => {
+                                writeln!(
+                                    output,
+                                    "(&::nate::details::TagWrapper::new(_nate_{block}_{data})).\
+                                        wrap(_nate_{block}_{data}),",
+                                    block = block_index,
+                                    data = data_index,
+                                )
+                                .unwrap();
+                            },
+                            Debug(_) | Verbose(_) => {
+                                writeln!(
+                                    output,
+                                    "::nate::XmlEscape(_nate_{block}_{data}),",
+                                    block = block_index,
+                                    data = data_index,
+                                )
+                                .unwrap();
+                            },
+                        }
+                    }
+
+                    // (arg1, arg2, …) => { … }
+                    writeln!(output, ") {{\n(").unwrap();
+                    for (data_index, data) in blocks.iter().enumerate() {
+                        match data {
+                            Data(_) => {},
+                            Raw(_) | Escaped(_) | Debug(_) | Verbose(_) => {
+                                writeln!(
+                                    output,
+                                    "_nate_{block}_{data},",
+                                    block = block_index,
+                                    data = data_index,
+                                )
+                                .unwrap();
+                            },
+                        }
+                    }
+                    write!(output, ") => {{").unwrap();
                 }
 
-                for (data_index, data) in blocks.iter().enumerate() {
-                    match data {
-                        Data(_) | Raw(_) => {},
-                        Escaped(_) => {
-                            writeln!(
-                                output,
-                                "let _nate_arg_{block}_{data} = \
-                                    (&::nate::details::TagWrapper::new(_nate_arg_{block}_{data})).\
-                                    wrap(_nate_arg_{block}_{data});",
-                                block = block_index,
-                                data = data_index,
-                            )
-                            .unwrap();
-                        },
-                        Debug(_) | Verbose(_) => {
-                            writeln!(
-                                output,
-                                "let _nate_arg_{block}_{data} = \
-                                    ::nate::XmlEscape(_nate_arg_{block}_{data});",
-                                block = block_index,
-                                data = data_index,
-                            )
-                            .unwrap();
-                        },
-                    }
-                }
-
+                // "…{:?}…{}…"
                 write!(
                     output,
                     "output.write_fmt(::nate::details::std::format_args!(\n\""
@@ -326,35 +376,36 @@ fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) {
                         },
                         Raw(_) | Escaped(_) => write!(
                             output,
-                            "{{_nate_arg_{block}_{data}}}",
+                            "{{_nate_{block}_{data}}}",
                             block = block_index,
                             data = data_index
                         )
                         .unwrap(),
                         Debug(_) => write!(
                             output,
-                            "{{_nate_arg_{block}_{data}:?}}",
+                            "{{_nate_{block}_{data}:?}}",
                             block = block_index,
                             data = data_index
                         )
                         .unwrap(),
                         Verbose(_) => write!(
                             output,
-                            "{{_nate_arg_{block}_{data}:#?}}",
+                            "{{_nate_{block}_{data}:#?}}",
                             block = block_index,
                             data = data_index
                         )
                         .unwrap(),
                     }
                 }
-                writeln!(output, "\",").unwrap();
 
+                // arg1 = arg1, arg2 = arg2, …
+                writeln!(output, "\",").unwrap();
                 for (data_index, data) in blocks.into_iter().enumerate() {
                     match data {
                         Data(_) => {},
                         Raw(_) | Escaped(_) | Debug(_) | Verbose(_) => writeln!(
                             output,
-                            "_nate_arg_{block}_{data} = _nate_arg_{block}_{data},",
+                            "_nate_{block}_{data} = _nate_{block}_{data},",
                             block = block_index,
                             data = data_index
                         )
@@ -362,6 +413,10 @@ fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) {
                     }
                 }
                 writeln!(output, "))?;\n}}").unwrap();
+
+                if any_arg {
+                    writeln!(output, "}}\n}}\n}}").unwrap();
+                }
             },
         }
     }
