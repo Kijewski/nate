@@ -1,15 +1,19 @@
-// Copyright (c) 2021 René Kijewski <rene.[SURNAME]@fu-berlin.de>
-// All rights reserved.
+// Copyright (c) 2021 René Kijewski <crates.io@k6i.de>
 //
-// This software and the accompanying materials are made available under
-// the terms of the ISC License which is available in the project root as LICENSE-ISC, AND/OR
-// the terms of the MIT License which is available at in the project root as LICENSE-MIT, AND/OR
-// the terms of the Apache License, Version 2.0 which is available in the project root as LICENSE-APACHE.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// You have to accept AT LEAST one of the aforementioned licenses to use, copy, modify, and/or distribute this software.
-// At your will you may redistribute the software under the terms of only one, two, or all three of the aforementioned licenses.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #![no_std]
+#![cfg_attr(feature = "doc_cfg", feature(doc_cfg))]
 #![forbid(unsafe_code)]
 #![warn(absolute_paths_not_starting_with_crate)]
 #![warn(elided_lifetimes_in_paths)]
@@ -27,6 +31,7 @@
 #![warn(unused_extern_crates)]
 #![warn(unused_lifetimes)]
 #![warn(unused_results)]
+#![no_implicit_prelude]
 
 //! [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Kijewski/nate/CI)](https://github.com/Kijewski/nate/actions/workflows/ci.yml)
 //! [![Crates.io](https://img.shields.io/crates/v/nate-common)](https://crates.io/crates/nate-common)
@@ -36,17 +41,59 @@
 //!
 //! This libary is used during the runtime of the generated code.
 
-#[cfg(feature = "std")]
-extern crate std;
-#[cfg(not(feature = "std"))]
-use core as std;
+#[doc(hidden)]
+pub mod details;
+mod raw_marker;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-extern crate alloc;
-#[cfg(feature = "std")]
-use std as alloc;
+use details::alloc;
+use details::std::fmt::{self, Arguments, Write as _};
+use details::std::prelude::v1::*;
+use details::std::write;
+pub use raw_marker::{EscapeTag, RawMarker, RawTag};
 
-use std::fmt::{self, Write};
+#[doc(hidden)]
+pub trait WriteAny {
+    fn write_fmt(&mut self, fmt: Arguments<'_>) -> fmt::Result;
+}
+
+/// Optimized trait methods to render a NaTE template
+///
+/// Every NaTE template implements this trait.
+pub trait RenderInto {
+    #[doc(hidden)]
+    fn render_into(&self, output: impl WriteAny) -> fmt::Result;
+
+    /// Render the output into an fmt::Write object
+    #[inline]
+    fn render_fmt(&self, output: impl fmt::Write) -> fmt::Result {
+        self.render_into(details::WriteFmt(output))
+    }
+
+    /// Render the output into an io::Write object
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(feature = "doc_cfg", doc(cfg(any(feature = "alloc", feature = "std"))))]
+    fn render_io(&self, output: impl alloc::io::Write) -> fmt::Result {
+        self.render_into(details::WriteIo(output))
+    }
+
+    /// Render the output into a new string
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(feature = "doc_cfg", doc(cfg(any(feature = "alloc", feature = "std"))))]
+    fn render_string(&self) -> Result<alloc::string::String, fmt::Error> {
+        let mut result = String::new();
+        self.render_fmt(&mut result)?;
+        Ok(result)
+    }
+
+    /// Render the output into a new vector
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(feature = "doc_cfg", doc(cfg(any(feature = "alloc", feature = "std"))))]
+    fn render_bytes(&self) -> Result<alloc::vec::Vec<u8>, fmt::Error> {
+        let mut result = Vec::new();
+        self.render_io(&mut result)?;
+        Ok(result)
+    }
+}
 
 /// A wrapper around a [displayable][fmt::Display] type that makes it write out XML escaped.
 ///
@@ -107,108 +154,4 @@ impl fmt::Write for XmlEscapeWriter<'_, '_> {
             c => return self.0.write_char(c),
         })
     }
-}
-
-/// Types implementing this marker don't need to be escaped.
-pub trait RawMarker {}
-
-impl<T: RawMarker> RawMarker for &T {}
-
-impl<T> RawMarker for XmlEscape<T> {}
-
-impl RawMarker for std::primitive::bool {}
-impl RawMarker for std::primitive::f32 {}
-impl RawMarker for std::primitive::f64 {}
-impl RawMarker for std::primitive::i128 {}
-impl RawMarker for std::primitive::i16 {}
-impl RawMarker for std::primitive::i32 {}
-impl RawMarker for std::primitive::i64 {}
-impl RawMarker for std::primitive::i8 {}
-impl RawMarker for std::primitive::isize {}
-impl RawMarker for std::primitive::u128 {}
-impl RawMarker for std::primitive::u16 {}
-impl RawMarker for std::primitive::u32 {}
-impl RawMarker for std::primitive::u64 {}
-impl RawMarker for std::primitive::u8 {}
-impl RawMarker for std::primitive::usize {}
-
-impl RawMarker for std::num::NonZeroI8 {}
-impl RawMarker for std::num::NonZeroI16 {}
-impl RawMarker for std::num::NonZeroI32 {}
-impl RawMarker for std::num::NonZeroI64 {}
-impl RawMarker for std::num::NonZeroI128 {}
-impl RawMarker for std::num::NonZeroIsize {}
-impl RawMarker for std::num::NonZeroU8 {}
-impl RawMarker for std::num::NonZeroU16 {}
-impl RawMarker for std::num::NonZeroU32 {}
-impl RawMarker for std::num::NonZeroU64 {}
-impl RawMarker for std::num::NonZeroU128 {}
-impl RawMarker for std::num::NonZeroUsize {}
-
-impl<T: RawMarker> RawMarker for std::cell::Ref<'_, T> {}
-impl<T: RawMarker> RawMarker for std::cell::RefMut<'_, T> {}
-impl<T: RawMarker> RawMarker for std::num::Wrapping<T> {}
-impl<T: RawMarker> RawMarker for std::pin::Pin<T> {}
-
-#[cfg(feature = "alloc")]
-impl<T: RawMarker + alloc::borrow::ToOwned> RawMarker for alloc::borrow::Cow<'_, T> {}
-#[cfg(feature = "alloc")]
-impl<T: RawMarker> RawMarker for alloc::boxed::Box<T> {}
-#[cfg(feature = "alloc")]
-impl<T: RawMarker> RawMarker for alloc::rc::Rc<T> {}
-#[cfg(feature = "alloc")]
-impl<T: RawMarker> RawMarker for alloc::sync::Arc<T> {}
-
-#[cfg(feature = "std")]
-impl<T: RawMarker> RawMarker for std::sync::MutexGuard<'_, T> {}
-#[cfg(feature = "std")]
-impl<T: RawMarker> RawMarker for std::sync::RwLockReadGuard<'_, T> {}
-#[cfg(feature = "std")]
-impl<T: RawMarker> RawMarker for std::sync::RwLockWriteGuard<'_, T> {}
-
-#[doc(hidden)]
-#[derive(Debug, Clone, Copy, Default)]
-pub struct RawTag;
-
-#[doc(hidden)]
-#[derive(Debug, Clone, Copy, Default)]
-pub struct EscapeTag;
-
-#[doc(hidden)]
-impl EscapeTag {
-    #[inline]
-    pub fn wrap<T>(&self, value: T) -> XmlEscape<T> {
-        XmlEscape(value)
-    }
-}
-
-#[doc(hidden)]
-pub mod _escape {
-    use crate::std;
-    use std::marker::PhantomData;
-
-    #[derive(Debug, Clone, Copy, Default)]
-    pub struct TagWrapper<E>(PhantomData<fn() -> *const E>);
-
-    impl<E> TagWrapper<E> {
-        pub fn new(_: &E) -> Self {
-            Self(PhantomData)
-        }
-    }
-
-    pub trait RawKind {
-        fn wrap<'a, T: super::RawMarker>(&self, value: &'a T) -> &'a T {
-            value
-        }
-    }
-
-    pub trait EscapeKind {
-        fn wrap<'a, T>(&self, value: &'a T) -> super::XmlEscape<&'a T> {
-            super::XmlEscape(value)
-        }
-    }
-
-    impl<T: super::RawMarker> RawKind for TagWrapper<T> {}
-
-    impl<T> EscapeKind for &TagWrapper<T> {}
 }

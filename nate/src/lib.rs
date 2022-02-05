@@ -1,13 +1,16 @@
-// Copyright (c) 2021 René Kijewski <rene.[SURNAME]@fu-berlin.de>
-// All rights reserved.
+// Copyright (c) 2021 René Kijewski <crates.io@k6i.de>
 //
-// This software and the accompanying materials are made available under
-// the terms of the ISC License which is available in the project root as LICENSE-ISC, AND/OR
-// the terms of the MIT License which is available at in the project root as LICENSE-MIT, AND/OR
-// the terms of the Apache License, Version 2.0 which is available in the project root as LICENSE-APACHE.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// You have to accept AT LEAST one of the aforementioned licenses to use, copy, modify, and/or distribute this software.
-// At your will you may redistribute the software under the terms of only one, two, or all three of the aforementioned licenses.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #![no_std]
 #![forbid(unsafe_code)]
@@ -143,8 +146,7 @@
 //! The generated code is stored in there even if there were parsing errors in the Rust code.
 //! The path is relative to the project root (where your Cargo.toml lives).
 
-pub use nate_common::{RawMarker, XmlEscape, _escape};
-pub use nate_derive::Nate;
-
 #[cfg(doc)]
-use core::fmt;
+use details::std::fmt;
+pub use nate_common::{details, RawMarker, RenderInto, WriteAny, XmlEscape};
+pub use nate_derive::Nate;

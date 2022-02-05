@@ -1,13 +1,16 @@
-// Copyright (c) 2021 René Kijewski <rene.[SURNAME]@fu-berlin.de>
-// All rights reserved.
+// Copyright (c) 2021 René Kijewski <crates.io@k6i.de>
 //
-// This software and the accompanying materials are made available under
-// the terms of the ISC License which is available in the project root as LICENSE-ISC, AND/OR
-// the terms of the MIT License which is available at in the project root as LICENSE-MIT, AND/OR
-// the terms of the Apache License, Version 2.0 which is available in the project root as LICENSE-APACHE.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// You have to accept AT LEAST one of the aforementioned licenses to use, copy, modify, and/or distribute this software.
-// At your will you may redistribute the software under the terms of only one, two, or all three of the aforementioned licenses.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #![forbid(unsafe_code)]
 #![warn(absolute_paths_not_starting_with_crate)]
@@ -53,22 +56,12 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::DeriveInput;
 
-const HEAD: &str = "\
-    {\n\
-        fn fmt(&self, output: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {\n\
-            #[allow(unused_imports)]\n\
-            use ::nate::_escape::{\n\
-                RawKind as _,\n\
-                EscapeKind as _,\n\
-            };\n\
-";
-
-const TAIL: &str = "\n\
-            ::core::fmt::Result::Ok(())\n\
-        }\n\
-    }\n\
-};\n\
-";
+const TAIL: &str = r#"
+            ::nate::details::std::fmt::Result::Ok(())
+        }
+    }
+};
+"#;
 
 /// Implement [fmt::Display](core::fmt::Display) for a struct or enum.
 ///
@@ -100,47 +93,73 @@ pub fn derive_nate(input: TokenStream) -> TokenStream {
             let err = format!("{}", err);
             return Into::into(quote!(
                 const _: () = {
-                    ::core::compile_error!(#err);
+                    ::nate::details::std::compile_error!(#err);
                 };
             ));
-        }
+        },
     };
 
     let base = var("CARGO_MANIFEST_DIR").unwrap();
     let path = Path::new(&base).join(&opts.path);
     let output = opts.generated.as_ref().map(|s| Path::new(&base).join(s));
 
-    let mut content = String::new();
-    let generics = &ast.generics;
-    write!(
-        content,
-        "const _: () = {{\nimpl {} ::core::fmt::Display for {} ",
-        quote!(#generics),
-        ident
-    )
-    .unwrap();
+    let left_generics = &ast.generics;
+    let left_generics = quote!(#left_generics);
+
+    let mut generics = String::new();
     if !ast.generics.params.is_empty() {
-        write!(content, "<").unwrap();
+        write!(generics, "<").unwrap();
         for arg in ast.generics.params.iter() {
             match arg {
                 syn::GenericParam::Type(ty) => {
-                    write!(content, " {}, ", ty.ident).unwrap();
-                }
+                    write!(generics, " {}, ", ty.ident).unwrap();
+                },
                 syn::GenericParam::Lifetime(def) => {
-                    write!(content, " '{}, ", def.lifetime.ident).unwrap();
-                }
+                    write!(generics, " '{}, ", def.lifetime.ident).unwrap();
+                },
                 syn::GenericParam::Const(par) => {
-                    write!(content, " {}, ", par.ident).unwrap();
-                }
+                    write!(generics, " {}, ", par.ident).unwrap();
+                },
             }
         }
-        writeln!(content, ">").unwrap();
+        writeln!(generics, ">").unwrap();
     }
     if let Some(where_clause) = ast.generics.where_clause {
-        writeln!(content, " {} ", quote!(#where_clause)).unwrap();
+        writeln!(generics, " {} ", quote!(#where_clause)).unwrap();
     }
 
-    write!(content, "{}", HEAD).unwrap();
+    let mut content = String::new();
+    write!(
+        content,
+        r#"
+#[automatically_derived]
+#[allow(unused_qualifications)]
+const _: () = {{
+    impl {left_generics} ::nate::details::std::fmt::Display for {ident} {generics} {{
+        #[inline]
+        fn fmt(
+            &self,
+            output: &mut ::nate::details::std::fmt::Formatter<'_>,
+        ) -> ::nate::details::std::fmt::Result {{
+            ::nate::RenderInto::render_fmt(self, output)
+        }}
+    }}
+
+    impl {left_generics} ::nate::RenderInto for {ident} {generics} {{
+        #[inline]
+        fn render_into(
+            &self,
+            mut output: impl ::nate::WriteAny,
+        ) -> ::nate::details::std::fmt::Result {{
+            #[allow(unused_imports)]
+            use ::nate::details::{{RawKind as _, EscapeKind as _}};
+"#,
+        left_generics = left_generics,
+        generics = generics,
+        ident = ident
+    )
+    .unwrap();
+
     parse_file(&path, &mut content, &opts);
     write!(content, "{}", TAIL).unwrap();
 
@@ -167,6 +186,7 @@ struct TemplateAttrs {
     #[darling(default)]
     generated: Option<String>,
     #[darling(default)]
+    #[allow(unused)] // TODO
     strip: Strip,
 }
 
@@ -190,6 +210,7 @@ impl Default for Strip {
 }
 
 impl Strip {
+    #[allow(unused)] // TODO
     fn apply(self, mut src: String) -> String {
         match self {
             Strip::None => src,
@@ -198,7 +219,7 @@ impl Strip {
                     let _ = src.pop();
                 }
                 src
-            }
+            },
             Strip::Trim | Strip::Eager => {
                 let mut stripped = String::with_capacity(src.len());
                 for line in src.lines().map(|s| s.trim()).filter(|&s| !s.is_empty()) {
@@ -217,43 +238,43 @@ impl Strip {
                     }
                 }
                 stripped
-            }
+            },
         }
     }
 }
 
-fn load_file(path: &Path, opts: &TemplateAttrs) -> String {
+fn load_file(path: &Path) -> String {
     let mut buf = String::new();
     match OpenOptions::new().read(true).open(&path) {
         Ok(mut f) => {
             let _ = f
                 .read_to_string(&mut buf)
                 .expect("Could not read source file even after successfully opening it.");
-        }
+        },
         Err(err) => {
             eprintln!("Could not open file={:?}: {:?}", path, err);
             panic!();
-        }
+        },
     }
-    opts.strip.apply(buf)
+    buf
 }
 
 fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) {
     use DataSection::*;
 
-    let buf = load_file(path, opts);
+    let buf = load_file(path);
     for (block_index, blocks) in parse(path, &buf, opts).into_iter().enumerate() {
         match blocks {
             ParsedData::Code(blocks) => {
                 for code in blocks.into_iter() {
                     writeln!(output, "{}", code).unwrap();
                 }
-            }
+            },
             ParsedData::Data(blocks) => {
                 writeln!(output, "{{").unwrap();
                 for (data_index, data) in blocks.iter().enumerate() {
                     match data {
-                        Data(_) => {}
+                        Data(_) => {},
                         Raw(s) | Escaped(s) | Debug(s) | Verbose(s) => {
                             writeln!(
                                 output,
@@ -261,24 +282,24 @@ fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) {
                                 block_index, data_index, s
                             )
                             .unwrap();
-                        }
+                        },
                     }
                 }
 
                 for (data_index, data) in blocks.iter().enumerate() {
                     match data {
-                        Data(_) | Raw(_) => {}
+                        Data(_) | Raw(_) => {},
                         Escaped(_) => {
                             writeln!(
                                 output,
                                 "let _nate_arg_{block}_{data} = \
-                                    (&::nate::_escape::TagWrapper::new(_nate_arg_{block}_{data})).\
+                                    (&::nate::details::TagWrapper::new(_nate_arg_{block}_{data})).\
                                     wrap(_nate_arg_{block}_{data});",
                                 block = block_index,
                                 data = data_index,
                             )
                             .unwrap();
-                        }
+                        },
                         Debug(_) | Verbose(_) => {
                             writeln!(
                                 output,
@@ -288,34 +309,60 @@ fn parse_file(path: &Path, mut output: impl Write, opts: &TemplateAttrs) {
                                 data = data_index,
                             )
                             .unwrap();
-                        }
+                        },
                     }
                 }
 
-                write!(output, "::core::write!(\noutput,\n\"").unwrap();
-                for block in blocks.iter() {
-                    match block {
+                write!(
+                    output,
+                    "output.write_fmt(::nate::details::std::format_args!(\n\""
+                )
+                .unwrap();
+                for (data_index, data) in blocks.iter().enumerate() {
+                    match data {
                         Data(s) => {
                             let s = format!("{:#?}", s).replace('{', "{{").replace('}', "}}");
                             write!(output, "{}", &s[1..s.len() - 1]).unwrap();
-                        }
-                        Raw(_) | Escaped(_) => write!(output, "{{}}").unwrap(),
-                        Debug(_) => write!(output, "{{:?}}").unwrap(),
-                        Verbose(_) => write!(output, "{{:#?}}").unwrap(),
+                        },
+                        Raw(_) | Escaped(_) => write!(
+                            output,
+                            "{{_nate_arg_{block}_{data}}}",
+                            block = block_index,
+                            data = data_index
+                        )
+                        .unwrap(),
+                        Debug(_) => write!(
+                            output,
+                            "{{_nate_arg_{block}_{data}:?}}",
+                            block = block_index,
+                            data = data_index
+                        )
+                        .unwrap(),
+                        Verbose(_) => write!(
+                            output,
+                            "{{_nate_arg_{block}_{data}:#?}}",
+                            block = block_index,
+                            data = data_index
+                        )
+                        .unwrap(),
                     }
                 }
                 writeln!(output, "\",").unwrap();
 
                 for (data_index, data) in blocks.into_iter().enumerate() {
                     match data {
-                        Data(_) => {}
-                        Raw(_) | Escaped(_) | Debug(_) | Verbose(_) => {
-                            writeln!(output, "_nate_arg_{}_{},", block_index, data_index).unwrap()
-                        }
+                        Data(_) => {},
+                        Raw(_) | Escaped(_) | Debug(_) | Verbose(_) => writeln!(
+                            output,
+                            "_nate_arg_{block}_{data} = _nate_arg_{block}_{data},",
+                            block = block_index,
+                            data = data_index
+                        )
+                        .unwrap(),
                     }
                 }
-                writeln!(output, ")?;\n}}").unwrap();
-            }
+                writeln!(output, "))?;\n}}").unwrap();
+            },
         }
     }
 }
@@ -341,13 +388,16 @@ fn parse_into(path: &Path, i: &str, accu: &mut Vec<ParsedData>, opts: &TemplateA
                 } else {
                     Block::Data(DataSection::Data(s))
                 }
-            }
+            },
             b => b,
         })
         .filter(|block| !block.is_empty());
 
     let s = format!(
-        "{{\nlet _ = (\"start of\", ::core::include_bytes!({:?}));",
+        "\
+{{\n\
+const _: &'static [::nate::details::std::primitive::u8] = \
+::nate::details::std::include_bytes!({:?});",
         path
     );
     match accu.last_mut() {
@@ -357,7 +407,7 @@ fn parse_into(path: &Path, i: &str, accu: &mut Vec<ParsedData>, opts: &TemplateA
 
     for block in it {
         match block {
-            Block::Comment => {}
+            Block::Comment => {},
             Block::Code(s) => match accu.last_mut() {
                 Some(ParsedData::Code(blocks)) => blocks.push(s),
                 _ => accu.push(ParsedData::Code(vec![s])),
@@ -371,16 +421,16 @@ fn parse_into(path: &Path, i: &str, accu: &mut Vec<ParsedData>, opts: &TemplateA
                 let include_path = match Path::new(include_path).iter().next() {
                     Some(d) if d.eq(".") || d.eq("..") => {
                         path.parent().unwrap_or(path).join(include_path)
-                    }
+                    },
                     _ => Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join(include_path),
                 };
-                let buf = load_file(&include_path, opts);
+                let buf = load_file(&include_path);
                 parse_into(&include_path, &buf, accu, opts);
-            }
+            },
         }
     }
 
-    let s = format!("let _ = (\"end of\", {:?});\n}}", path);
+    let s = "}".to_owned();
     match accu.last_mut() {
         Some(ParsedData::Code(blocks)) => blocks.push(s),
         _ => accu.push(ParsedData::Code(vec![s])),
@@ -444,7 +494,7 @@ fn abort_with_nom_error(err: nom::Err<nom::error::Error<&str>>, start: &str, pat
     match err {
         nom::Err::Incomplete(_) => {
             panic!("Impossible");
-        }
+        },
         nom::Err::Error(err) | nom::Err::Failure(err) => {
             let offset = start.len() - err.input.len();
             let (source_before, source_after) = start.split_at(offset);
@@ -464,7 +514,7 @@ fn abort_with_nom_error(err: nom::Err<nom::error::Error<&str>>, start: &str, pat
                 column,
                 source_after,
             );
-        }
+        },
     }
 }
 
@@ -477,10 +527,10 @@ impl Iterator for WsBlockIter<'_> {
                 Ok((j, b)) => {
                     self.pos = j;
                     Some(b)
-                }
+                },
                 Err(err) => {
                     abort_with_nom_error(err, self.start, self.path);
-                }
+                },
             }
         } else {
             None
@@ -490,7 +540,7 @@ impl Iterator for WsBlockIter<'_> {
                 let result = WsBlock(*cur_a, cur_b.clone(), cur_z | next_a);
                 self.next = Some(WsBlock(next_a || *cur_z, next_b, next_z));
                 Some(result)
-            }
+            },
             (None, _) => self.next.take(),
             (_, None) => panic!("Impossible"),
         }

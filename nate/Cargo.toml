@@ -1,9 +1,9 @@
 [package]
 name = "nate"
 version = "0.1.9"
-edition = "2018"
-authors = ["René Kijewski <rene.[SURNAME]@fu-berlin.de>"]
-license = "ISC OR MIT OR Apache-2.0"
+edition = "2021"
+authors = ["René Kijewski <crates.io@k6i.de>"]
+license = "Apache-2.0"
 description = "Not a Template Engine. Derive Display using a template."
 homepage = "https://github.com/Kijewski/nate"
 repository = "https://github.com/Kijewski/nate"
@@ -12,10 +12,11 @@ keywords = ["html", "template", "no-std"]
 readme = "README.md"
 
 [dependencies]
-nate-common = { path = "../nate-common", version = "0.1.8", default-features = false }
+nate-common = { path = "../nate-common", version = "0.1.9", default-features = false }
 nate-derive = { path = "../nate-derive", version = "0.1.9", default-features = false }
 
 [features]
-default = []
+default = ["std"]
 alloc = ["nate-common/alloc"]
-std = ["alloc", "nate-common/std"]
+std = ["nate-common/std"]
+doc_cfg = ["nate-common/doc_cfg"]

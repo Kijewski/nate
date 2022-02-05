@@ -28,6 +28,7 @@ fn test_css() -> Result {
     Ok(())
 }
 
+/*
 #[test]
 fn test_css_tail() -> Result {
     #[derive(Nate)]
@@ -102,3 +103,4 @@ background: lightyellow;
     );
     Ok(())
 }
+*/

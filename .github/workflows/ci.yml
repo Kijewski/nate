@@ -17,7 +17,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: nightly
           override: true
           components: rustfmt
 
@@ -40,7 +40,7 @@ jobs:
       - name: Cache
         uses: actions/cache@v2
         with:
-          key: ${{ runner.os }}-clippy-${{ hashFiles('Cargo.toml', '**/Cargo.toml') }}
+          key: ${{ runner.os }}-clippy-${{ hashFiles('Cargo.lock') }}
           restore-keys: ${{ runner.os }}-clippy-
           path: |
             ~/.cargo/registry/index/
@@ -66,7 +66,7 @@ jobs:
       - name: Cache
         uses: actions/cache@v2
         with:
-          key: ${{ runner.os }}-check-${{ hashFiles('Cargo.toml', '**/Cargo.toml') }}
+          key: ${{ runner.os }}-check-${{ hashFiles('Cargo.lock') }}
           restore-keys: ${{ runner.os }}-check-
           path: |
             ~/.cargo/registry/index/
@@ -74,7 +74,7 @@ jobs:
             ~/.cargo/git/db/
             target/
 
-      - run: cargo check --workspace --all-features --all-targets
+      - run: cargo check --workspace --all-targets
 
   test:
     runs-on: ubuntu-latest
@@ -92,7 +92,7 @@ jobs:
       - name: Cache
         uses: actions/cache@v2
         with:
-          key: ${{ runner.os }}-test-${{ hashFiles('Cargo.toml', '**/Cargo.toml') }}
+          key: ${{ runner.os }}-test-${{ hashFiles('Cargo.lock') }}
           restore-keys: ${{ runner.os }}-test-
           path: |
             ~/.cargo/registry/index/
@@ -100,4 +100,4 @@ jobs:
             ~/.cargo/git/db/
             target/
 
-      - run: cargo test --workspace --all-features --all-targets
+      - run: cargo test --workspace --all-targets

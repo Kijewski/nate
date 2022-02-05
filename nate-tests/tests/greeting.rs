@@ -23,13 +23,9 @@ fn test_greeting() -> Result {
     }
 
     let mut buf = String::new();
-    write!(
-        buf,
-        "{}",
-        Template {
-            user: "<World>".to_owned()
-        }
-    )?;
+    write!(buf, "{}", Template {
+        user: "<World>".to_owned()
+    })?;
     assert_eq!(buf, "<h1>Hello, &#60;World&#62;!</h1>");
     Ok(())
 }
@@ -43,13 +39,9 @@ fn test_greeting_raw() -> Result {
     }
 
     let mut buf = String::new();
-    write!(
-        buf,
-        "{}",
-        Template {
-            user: "<World>".to_owned()
-        }
-    )?;
+    write!(buf, "{}", Template {
+        user: "<World>".to_owned()
+    })?;
     assert_eq!(buf, "<h1>Hello, <World>!</h1>");
     Ok(())
 }
