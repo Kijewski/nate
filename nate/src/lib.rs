@@ -132,7 +132,7 @@
 //!
 //! For values in `{{{{{ verbose blocks }}}}}` their debug message is printed verbose as in `"{:#?}"`.
 //!
-//! With `{< include >}` block you can include a template file.
+//! With `{< include >}` blocks you can include a template file.
 //! It then behaves like it was copy-pasted into the current file.
 //! If the path starts with "." or "..", the file is searched relative to the current file.
 //! Otherwise it is search in the project root.

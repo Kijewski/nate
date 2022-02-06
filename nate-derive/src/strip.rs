@@ -1,15 +1,4 @@
-use darling::{FromDeriveInput, FromMeta};
-
-#[derive(Debug, Default, FromDeriveInput)]
-#[darling(attributes(template))]
-pub(crate) struct TemplateAttrs {
-    pub(crate) path: String,
-    #[darling(default)]
-    pub(crate) generated: Option<String>,
-    #[darling(default)]
-    #[allow(unused)] // TODO
-    pub(crate) strip: Strip,
-}
+use darling::FromMeta;
 
 /// Whitespace handling of the input source.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromMeta)]
