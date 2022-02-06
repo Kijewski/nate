@@ -2,10 +2,16 @@
 [![Crates.io](https://img.shields.io/crates/v/nate)](https://crates.io/crates/nate)
 [![License](https://img.shields.io/crates/l/nate?color=informational)](/LICENSES)
 
-## **N**ot **a** **T**emplate **E**ngine
+## NaTE — Not a Template Engine
 
-This is not a template engine, but sugar to implicitly call `write!(…)` like in PHP.
+This is *not* a template engine, but sugar to implicitly call `write!(…)` like in PHP.
 The only difference is that the output gets XML escaped automatically unless opted-out explicitly.
+
+Unlike other template engines like
+[Askama](https://crates.io/crates/askama), [Handlebars](https://crates.io/crates/handlebars),
+[Liquid](https://github.com/cobalt-org/liquid-rust), [Tera](https://crates.io/crates/tera), or
+[Tide](https://crates.io/crates/tide), you don't have to learn a new language.
+If you know Rust and HTML, you already know how to implement templates with NaTE!
 
 E.g.
 
