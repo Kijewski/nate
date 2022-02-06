@@ -46,18 +46,21 @@ impl<W: fmt::Write> super::WriteAny for WriteFmt<W> {
 pub struct TagWrapper<E>(PhantomData<fn() -> *const E>);
 
 impl<E> TagWrapper<E> {
+    #[inline]
     pub fn new(_: &E) -> Self {
         Self(PhantomData)
     }
 }
 
 pub trait RawKind {
+    #[inline]
     fn wrap<'a, T: super::RawMarker>(&self, value: &'a T) -> &'a T {
         value
     }
 }
 
 pub trait EscapeKind {
+    #[inline]
     fn wrap<'a, T>(&self, value: &'a T) -> super::XmlEscape<&'a T> {
         super::XmlEscape(value)
     }

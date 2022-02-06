@@ -75,6 +75,7 @@ pub trait RenderInto {
     /// Render the output into an io::Write object
     #[cfg(feature = "alloc")]
     #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "alloc", feature = "std"))))]
+    #[inline]
     fn render_io(&self, output: impl alloc::io::Write) -> fmt::Result {
         self.render_into(details::WriteIo(output))
     }
