@@ -65,6 +65,10 @@ impl SpanData {
     pub(crate) fn trim_range(&self) -> Range<usize> {
         trim_range(self.as_str())
     }
+
+    pub(crate) fn path(&self) -> Option<&Path> {
+        self.data.path.as_deref()
+    }
 }
 
 fn trim_start_range(i: &str) -> RangeFrom<usize> {
