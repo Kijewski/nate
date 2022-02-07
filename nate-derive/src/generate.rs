@@ -80,7 +80,6 @@ const _: () = {{
     }}
 
     impl {left_generics} ::nate::RenderInto for {ident} {generics} {{
-        #[inline]
         fn render_into(
             &self,
             mut output: impl ::nate::WriteAny,
