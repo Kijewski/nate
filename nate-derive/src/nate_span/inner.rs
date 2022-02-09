@@ -4,8 +4,11 @@ use nom::{AsBytes, Compare, CompareResult, FindSubstring, FindToken, InputLength
 
 use super::Shared;
 
+// Should be `pub(crate)`, but in stable (1.58) you get "crate-private type `nate_span::inner::Current<T, S>`
+// in public interface". Fixed in nightly (1.60).
 #[derive(Debug)]
-pub(crate) struct Current<T, S>
+#[allow(unreachable_pub)]
+pub struct Current<T, S>
 where
     T: AsRef<str>,
 {
