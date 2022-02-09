@@ -40,8 +40,8 @@
 
 mod compile_error;
 mod generate;
+mod nate_span;
 mod parse;
-mod span_data;
 mod strip;
 
 use darling::FromDeriveInput;

@@ -1,6 +1,6 @@
 [package]
 name = "nate-derive"
-version = "0.1.9"
+version = "0.1.10"
 edition = "2021"
 authors = ["René Kijewski <crates.io@k6i.de>"]
 license = "Apache-2.0"
@@ -15,11 +15,11 @@ readme = "README.md"
 proc-macro = true
 
 [dependencies]
-darling = "0.13"
-nom = "7"
-nom_locate = "4"
-quote = "1"
-syn = { version = "1", features = ["proc-macro"], default-features = false }
+darling = "0.13.1"
+nom = "7.1.0"
+nom_locate = "4.0.0"
+quote = "1.0.15"
+syn = { version = "1.0.86", features = ["proc-macro"], default-features = false }
 
 [features]
 default = []

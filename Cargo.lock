@@ -75,7 +75,7 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "nate"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "document-features",
  "nate-common",
@@ -84,14 +84,14 @@ dependencies = [
 
 [[package]]
 name = "nate-common"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "document-features",
 ]
 
 [[package]]
 name = "nate-derive"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "darling",
  "nom",

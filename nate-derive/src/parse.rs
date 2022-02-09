@@ -5,10 +5,10 @@ use nom::bytes::complete::{tag, take_until};
 use nom::combinator::{cut, opt, rest};
 use nom::error::ErrorKind;
 use nom::sequence::{pair, preceded};
-use nom::{error_position, IResult, InputTake, Slice};
+use nom::{error_position, IResult, InputTake};
 
 use crate::compile_error::CompileError;
-use crate::span_data::SpanInput;
+use crate::generate::SpanInput;
 
 pub(crate) fn input_into_blocks(i: SpanInput) -> impl Iterator<Item = Result<Block, CompileError>> {
     WsBlockIter(BlockIter(Some(i)).peekable()).filter_map(|item| {
@@ -19,9 +19,9 @@ pub(crate) fn input_into_blocks(i: SpanInput) -> impl Iterator<Item = Result<Blo
         let b = match b {
             Block::Data(DataSection::Data(s)) => {
                 let s = match (a, z) {
-                    (true, true) => s.slice(s.trim_range()),
-                    (true, false) => s.slice(s.trim_start_range()),
-                    (false, true) => s.slice(s.trim_start_range()),
+                    (true, true) => s.trim(),
+                    (true, false) => s.trim_start(),
+                    (false, true) => s.trim_end(),
                     (false, false) => s,
                 };
                 Block::Data(DataSection::Data(s))
@@ -156,7 +156,7 @@ fn parse_block(
             false => (inner, false),
         };
 
-        let inner = inner.slice(inner.trim_range());
+        let inner = inner.trim();
         Ok((i, (inner, trim)))
     };
 

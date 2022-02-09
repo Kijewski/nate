@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::env::var;
 use std::fmt::Write;
 use std::fs::OpenOptions;
@@ -10,9 +11,11 @@ use quote::quote;
 use syn::DeriveInput;
 
 use crate::compile_error::CompileError;
+use crate::nate_span::SpanStatic;
 use crate::parse::{input_into_blocks, Block, DataSection};
-use crate::span_data::{input_only, input_with_path, SpanInput};
 use crate::TemplateAttrs;
+
+pub(crate) type SpanInput = SpanStatic<(), Option<Cow<'static, Path>>>;
 
 #[derive(Debug)]
 enum ParsedData {
@@ -107,7 +110,7 @@ fn load_file(path: &Path) -> String {
 }
 
 fn push_address(span: &SpanInput, output: &mut impl Write) -> Result<(), CompileError> {
-    let path = match span.path() {
+    let path = match span.get_shared() {
         Some(path) => path.as_os_str(),
         None => return Ok(()),
     };
@@ -255,9 +258,11 @@ fn parse_into(
     accu: &mut Vec<ParsedData>,
     opts: &TemplateAttrs,
 ) -> Result<(), CompileError> {
-    let it = input_into_blocks(input_with_path(i.into(), path.clone().into()));
+    let span = SpanInput::new_with_shared(i, Some(path.into()));
+    let path = span.get_rc();
+    let path = path.1.as_ref().unwrap().as_ref();
 
-    let s = input_only(format!(
+    let s = SpanInput::new(format!(
         "\
 {{\n\
 const _: &'static [::nate::details::std::primitive::u8] = \
@@ -269,7 +274,7 @@ const _: &'static [::nate::details::std::primitive::u8] = \
         _ => accu.push(ParsedData::Code(vec![s])),
     }
 
-    for block in it {
+    for block in input_into_blocks(span) {
         match block? {
             Block::Comment => {},
             Block::Code(s) => match accu.last_mut() {
@@ -284,7 +289,7 @@ const _: &'static [::nate::details::std::primitive::u8] = \
                 let include_path = include_path.as_str().trim();
                 let include_path = match Path::new(include_path).iter().next() {
                     Some(d) if d.eq(".") || d.eq("..") => {
-                        path.parent().unwrap_or(&path).join(include_path)
+                        path.parent().unwrap_or(path).join(include_path)
                     },
                     _ => Path::new(&var("CARGO_MANIFEST_DIR").map_err(|_| std::fmt::Error)?)
                         .join(include_path),
@@ -295,7 +300,7 @@ const _: &'static [::nate::details::std::primitive::u8] = \
         }
     }
 
-    let s = input_only("}");
+    let s = SpanInput::new("}");
     match accu.last_mut() {
         Some(ParsedData::Code(blocks)) => blocks.push(s),
         _ => accu.push(ParsedData::Code(vec![s])),

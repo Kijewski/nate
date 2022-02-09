@@ -1,9 +1,8 @@
 use std::fmt::{Display, Formatter};
-use std::path::Path;
 
 use nom::Offset;
 
-use crate::span_data::SpanInput;
+use crate::generate::SpanInput;
 
 #[derive(Debug)]
 pub(crate) enum CompileError {
@@ -70,8 +69,12 @@ impl Display for CompileError {
             nom::Err::Incomplete(_) => unreachable!(),
             nom::Err::Error(err) | nom::Err::Failure(err) => &err.input,
         };
-        let (source, path) = input.get_data();
-        let path = path.and_then(Path::to_str).unwrap_or("??");
+        let source = input.get_source();
+        let path = input
+            .get_shared()
+            .as_deref()
+            .and_then(|p| p.to_str())
+            .unwrap_or("??");
         let row = input.location_line();
         let column = input.naive_get_utf8_column();
 
