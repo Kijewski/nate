@@ -5,6 +5,8 @@ on:
     branches: ['main']
   pull_request:
     branches: ['main']
+  schedule:
+    - cron: "58 7 * * 4"
 
 jobs:
   fmt:
@@ -23,13 +25,23 @@ jobs:
 
       - run: cargo fmt --all -- --check
 
-  clippy:
+  check:
+    strategy:
+      matrix:
+        toolchain:
+          - "1.54"
+          - stable
+          - nightly
+
+    name: "Check/${{ matrix.toolchain }}"
+
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
       - name: Install Rust
+        id: actions-rs
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -40,34 +52,8 @@ jobs:
       - name: Cache
         uses: actions/cache@v2
         with:
-          key: ${{ runner.os }}-clippy-${{ hashFiles('Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-clippy-
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-
-      - run: cargo clippy --all-targets -- -D warnings
-
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - name: Cache
-        uses: actions/cache@v2
-        with:
-          key: ${{ runner.os }}-check-${{ hashFiles('Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-check-
+          key: ${{ runner.os }}-check-${{ steps.actions-rs.outputs.rustc }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-check-${{ steps.actions-rs.outputs.rustc }}-
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
@@ -76,24 +62,36 @@ jobs:
 
       - run: cargo check --workspace --all-targets
 
+      - run: cargo clippy --all-targets -- -D warnings
+
   test:
+    strategy:
+      matrix:
+        toolchain:
+          - "1.54"
+          - stable
+          - nightly
+
+    name: "Test/${{ matrix.toolchain }}"
+
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
       - name: Install Rust
+        id: actions-rs
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: ${{ matrix.toolchain }}
           override: true
 
       - name: Cache
         uses: actions/cache@v2
         with:
-          key: ${{ runner.os }}-test-${{ hashFiles('Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-test-
+          key: ${{ runner.os }}-test-${{ steps.actions-rs.outputs.rustc }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-test-${{ steps.actions-rs.outputs.rustc }}-
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/

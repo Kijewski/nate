@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #![forbid(unsafe_code)]
+#![allow(unused_attributes)]
 #![warn(absolute_paths_not_starting_with_crate)]
 #![warn(elided_lifetimes_in_paths)]
 #![warn(explicit_outlives_requirements)]
@@ -29,6 +30,7 @@
 #![warn(unused_extern_crates)]
 #![warn(unused_lifetimes)]
 #![warn(unused_results)]
+#![allow(clippy::many_single_char_names)]
 
 //! [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Kijewski/nate/CI)](https://github.com/Kijewski/nate/actions/workflows/ci.yml)
 //! [![Crates.io](https://img.shields.io/crates/v/nate-derive)](https://crates.io/crates/nate-derive)

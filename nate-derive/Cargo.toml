@@ -1,7 +1,8 @@
 [package]
 name = "nate-derive"
 version = "0.1.10"
-edition = "2021"
+edition = "2018"
+# rust-version = "1.54"
 authors = ["René Kijewski <crates.io@k6i.de>"]
 license = "Apache-2.0"
 description = "Proc-macros for NaTE"

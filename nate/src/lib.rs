@@ -15,6 +15,7 @@
 #![no_std]
 #![cfg_attr(feature = "docsrs", feature(doc_cfg))]
 #![forbid(unsafe_code)]
+#![allow(unused_attributes)]
 #![warn(absolute_paths_not_starting_with_crate)]
 #![warn(elided_lifetimes_in_paths)]
 #![warn(explicit_outlives_requirements)]
@@ -82,7 +83,7 @@
 //!     <h1>Hello, &#60;World&#62;!</h1>
 //!     ```
 //!
-//! No new traits are introduced, instead using `#[derive(Nate)]` works by implementing [fmt::Display].
+//! No new traits are needed, instead `#[derive(Nate)]` primarily works by implementing [fmt::Display].
 //! This also makes nesting of NaTE templates possible.
 //!
 //! A more complex example would be:

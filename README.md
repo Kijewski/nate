@@ -48,7 +48,7 @@ E.g.
     <h1>Hello, &#60;World&#62;!</h1>
     ```
 
-No new traits are introduced, instead using `#[derive(Nate)]` works by implementing fmt::Display.
+No new traits are needed, instead `#[derive(Nate)]` primarily works by implementing fmt::Display.
 This also makes nesting of NaTE templates possible.
 
 A more complex example would be:  
