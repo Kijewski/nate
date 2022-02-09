@@ -29,38 +29,14 @@ const TAIL: &str = r#"
 
 pub(crate) fn generate(input: TokenStream) -> Result<TokenStream, CompileError> {
     let ast: DeriveInput = syn::parse(input)?;
-    let ident = ast.ident.to_string();
-
     let opts = TemplateAttrs::from_derive_input(&ast)?;
+
+    let (impl_generics, type_generics, where_clause) = ast.generics.split_for_impl();
+    let ident = ast.ident;
 
     let base = var("CARGO_MANIFEST_DIR").unwrap();
     let path = Path::new(&base).join(&opts.path);
     let output = opts.generated.as_ref().map(|s| Path::new(&base).join(s));
-
-    let left_generics = &ast.generics;
-    let left_generics = quote!(#left_generics);
-
-    let mut generics = String::new();
-    if !ast.generics.params.is_empty() {
-        write!(generics, "<")?;
-        for arg in ast.generics.params.iter() {
-            match arg {
-                syn::GenericParam::Type(ty) => {
-                    write!(generics, " {}, ", ty.ident)?;
-                },
-                syn::GenericParam::Lifetime(def) => {
-                    write!(generics, " '{}, ", def.lifetime.ident)?;
-                },
-                syn::GenericParam::Const(par) => {
-                    write!(generics, " {}, ", par.ident)?;
-                },
-            }
-        }
-        writeln!(generics, ">")?;
-    }
-    if let Some(where_clause) = ast.generics.where_clause {
-        writeln!(generics, " {} ", quote!(#where_clause))?;
-    }
 
     let mut content = String::new();
     write!(
@@ -69,7 +45,9 @@ pub(crate) fn generate(input: TokenStream) -> Result<TokenStream, CompileError> 
 #[automatically_derived]
 #[allow(unused_qualifications)]
 const _: () = {{
-    impl {left_generics} ::nate::details::std::fmt::Display for {ident} {generics} {{
+    impl {impl_generics} ::nate::details::std::fmt::Display
+        for {ident} {type_generics} {where_clause}
+    {{
         #[inline]
         fn fmt(
             &self,
@@ -79,7 +57,9 @@ const _: () = {{
         }}
     }}
 
-    impl {left_generics} ::nate::RenderInto for {ident} {generics} {{
+    impl {impl_generics} ::nate::RenderInto
+        for {ident} {type_generics} {where_clause}
+    {{
         fn render_into(
             &self,
             mut output: impl ::nate::WriteAny,
@@ -87,9 +67,10 @@ const _: () = {{
             #[allow(unused_imports)]
             use ::nate::details::{{RawKind as _, EscapeKind as _}};
 "#,
-        left_generics = left_generics,
-        generics = generics,
-        ident = ident
+        impl_generics = quote!(#impl_generics),
+        type_generics = quote!(#type_generics),
+        where_clause = quote!(#where_clause),
+        ident = quote!(#ident),
     )?;
 
     parse_file(path, &mut content, &opts)?;
@@ -132,7 +113,7 @@ fn push_address(span: &SpanInput, output: &mut impl Write) -> Result<(), Compile
     };
     writeln!(
         output,
-        "// #[__nate_addr(path={path:?}, offset={offset:?}, row={row:?}, col={col:?})]",
+        r"// #[::nate::addr(path={path:?}, offset={offset:?}, row={row:?}, col={col:?})]",
         path = path,
         offset = span.location_offset(),
         row = span.location_line(),

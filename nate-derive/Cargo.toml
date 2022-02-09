@@ -19,7 +19,7 @@ darling = "0.13"
 nom = "7"
 nom_locate = "4"
 quote = "1"
-syn = { version = "1", features = ["full"] }
+syn = { version = "1", features = ["proc-macro"], default-features = false }
 
 [features]
 default = []
