@@ -86,8 +86,14 @@ where
     }
 
     /// Get the original source which the current span is a subspan of
-    pub fn get_source(&self) -> &str {
-        self.0.shared.0.as_ref()
+    pub fn get_source(&self) -> Self {
+        let shared = self.0.fragment().shared.clone();
+        let current = Current {
+            start: 0,
+            end: shared.0.as_ref().len(),
+            shared,
+        };
+        Self(LocatedSpan::new_extra(current, self.0.extra.clone()))
     }
 
     /// Get the shared data of this soan
