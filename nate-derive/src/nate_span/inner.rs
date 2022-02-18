@@ -51,13 +51,19 @@ where
     }
 }
 
-impl<T: AsRef<str>, S> PartialEq for Current<T, S> {
+impl<T, S> PartialEq for Current<T, S>
+where
+    T: AsRef<str>,
+{
     fn eq(&self, other: &Self) -> bool {
         self.as_bytes() == other.as_bytes()
     }
 }
 
-impl<T: AsRef<str>, S> AsBytes for Current<T, S> {
+impl<T, S> AsBytes for Current<T, S>
+where
+    T: AsRef<str>,
+{
     fn as_bytes(&self) -> &[u8] {
         &self.shared.0.as_ref().as_bytes()[self.range()]
     }
@@ -144,10 +150,10 @@ where
 impl<B, T, S> FindSubstring<B> for Current<T, S>
 where
     T: AsRef<str>,
-    for<'a> &'a str: FindSubstring<B>,
+    for<'a> &'a [u8]: FindSubstring<B>,
 {
     fn find_substring(&self, substr: B) -> Option<usize> {
-        self.as_str().find_substring(substr)
+        self.as_bytes().find_substring(substr)
     }
 }
 
@@ -155,14 +161,14 @@ where
 impl<B, T, S> Compare<B> for Current<T, S>
 where
     T: AsRef<str>,
-    for<'a> &'a str: Compare<B>,
+    for<'a> &'a [u8]: Compare<B>,
 {
     fn compare(&self, t: B) -> CompareResult {
-        self.as_str().compare(t)
+        self.as_bytes().compare(t)
     }
 
     fn compare_no_case(&self, t: B) -> CompareResult {
-        self.as_str().compare_no_case(t)
+        self.as_bytes().compare_no_case(t)
     }
 }
 
@@ -170,10 +176,10 @@ where
 impl<U, T, S> FindToken<U> for Current<T, S>
 where
     T: AsRef<str>,
-    for<'a> &'a str: FindToken<U>,
+    for<'a> &'a [u8]: FindToken<U>,
 {
     fn find_token(&self, token: U) -> bool {
-        self.as_str().find_token(token)
+        self.as_bytes().find_token(token)
     }
 }
 

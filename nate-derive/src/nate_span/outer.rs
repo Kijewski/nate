@@ -80,6 +80,11 @@ where
         self.0.as_str()
     }
 
+    /// Get the length of the current span in bytes
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     /// Get the original source which the current span is a subspan of
     pub fn get_source(&self) -> &str {
         self.0.shared.0.as_ref()
@@ -174,6 +179,16 @@ where
     }
 }
 
+impl<T, X, S> AsRef<[u8]> for SpanAny<T, X, S>
+where
+    T: Clone + AsRef<str>,
+    X: Clone,
+{
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
+    }
+}
+
 impl<T, X, S> Deref for SpanAny<T, X, S>
 where
     T: Clone + AsRef<str>,
@@ -202,7 +217,7 @@ where
     X: Clone,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.location_offset() == other.location_offset() && self.len() == other.len()
+        self.len() == other.len() && self.location_offset() == other.location_offset()
     }
 }
 
