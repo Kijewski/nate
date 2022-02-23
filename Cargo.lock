@@ -45,9 +45,9 @@ dependencies = [
 
 [[package]]
 name = "document-features"
-version = "0.1.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7b262786be72873f218389b0164de3c646a91f9e3627790df5b70f7d157920b"
+checksum = "b01c09fd63b5136fba41aa625c7b3254f0aa0a435ff6ec4b2c9a28d496c83c88"
 
 [[package]]
 name = "fnv"

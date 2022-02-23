@@ -1,1 +1,1 @@
-/home/kijewski/git-arbeit/rust/nate/README.md
+../README.md

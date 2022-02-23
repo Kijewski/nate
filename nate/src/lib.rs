@@ -34,11 +34,12 @@
 #![warn(unused_results)]
 #![no_implicit_prelude]
 
-//! [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Kijewski/nate/CI)](https://github.com/Kijewski/nate/actions/workflows/ci.yml)
-//! [![Crates.io](https://img.shields.io/crates/v/nate)](https://crates.io/crates/nate)
-//! [![License](https://img.shields.io/crates/l/nate?color=informational)](/LICENSES)
-//!
 //! ## NaTE — Not a Template Engine
+//!
+//! [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Kijewski/nate/CI?logo=github)](https://github.com/Kijewski/nate/actions/workflows/ci.yml)
+//! [![Crates.io](https://img.shields.io/crates/v/nate?logo=rust)](https://crates.io/crates/nate)
+//! ![Minimum supported Rust version](https://img.shields.io/badge/msrv-1.54-informational?logo=rust)
+//! [![License](https://img.shields.io/crates/l/nate?color=informational&logo=apache)](/LICENSES)
 //!
 //! This is *not* a template engine, but sugar to implicitly call `write!(…)` like in PHP.
 //! The only difference is that the output gets XML escaped automatically unless opted-out explicitly.
@@ -108,7 +109,7 @@
 //!
 //! *   templates/99-bottles.txt:
 //!
-//!     ```html
+//!     ```jinja
 //!     {%-
 //!         for i in (1..=self.limit).rev() {
 //!             if i == 1 {
