@@ -29,7 +29,7 @@ std = ["alloc", "nate-common/std"]
 alloc = ["nate-common/alloc"]
 
 # Internal feature, used when generating docs. *You* are not supposed to enable this feature!
-docsrs = ["nate-common/docsrs", "document-features"]
+docsrs = ["nate-common/docsrs", "document-features", "default"]
 
 [package.metadata.docs.rs]
-features = ["alloc", "std", "docsrs"]
+features = ["docsrs"]

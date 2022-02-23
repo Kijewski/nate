@@ -26,7 +26,7 @@ syn = { version = "1.0.86", features = ["proc-macro"], default-features = false 
 default = []
 
 # Internal feature, used when generating docs. *You* are not supposed to enable this feature!
-docsrs = []
+docsrs = ["default"]
 
 [package.metadata.docs.rs]
 features = ["docsrs"]

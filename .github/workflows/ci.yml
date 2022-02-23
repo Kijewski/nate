@@ -52,8 +52,10 @@ jobs:
       - name: Cache
         uses: actions/cache@v2
         with:
-          key: ${{ runner.os }}-check-${{ steps.actions-rs.outputs.rustc }}-${{ hashFiles('Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-check-${{ steps.actions-rs.outputs.rustc }}-
+          key: ${{ runner.os }}-check-${{ steps.actions-rs.outputs.rustc_hash }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-check-${{ steps.actions-rs.outputs.rustc_hash }}-
+            ${{ runner.os }}-check-
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
@@ -90,8 +92,10 @@ jobs:
       - name: Cache
         uses: actions/cache@v2
         with:
-          key: ${{ runner.os }}-test-${{ steps.actions-rs.outputs.rustc }}-${{ hashFiles('Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-test-${{ steps.actions-rs.outputs.rustc }}-
+          key: ${{ runner.os }}-test-${{ steps.actions-rs.outputs.rustc_hash }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-test-${{ steps.actions-rs.outputs.rustc_hash }}-
+            ${{ runner.os }}-test-
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
@@ -99,6 +103,39 @@ jobs:
             target/
 
       - run: cargo test --workspace --all-targets
+
+  doc:
+    name: "Documentation"
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          lfs: true
+
+      - name: Install Rust
+        id: actions-rs
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+
+      - name: Cache
+        uses: actions/cache@v2
+        with:
+          key: ${{ runner.os }}-doc-${{ steps.actions-rs.outputs.rustc_hash }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-doc-${{ steps.actions-rs.outputs.rustc_hash }}-
+            ${{ runner.os }}-doc-
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+
+      - run: cargo doc --workspace --features docsrs
 
   audit:
     runs-on: ubuntu-latest
@@ -115,7 +152,8 @@ jobs:
         uses: actions/cache@v2
         with:
           key: ${{ runner.os }}-audit-${{ hashFiles('Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-audit-
+          restore-keys: |
+            ${{ runner.os }}-audit-
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/

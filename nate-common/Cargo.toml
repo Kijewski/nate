@@ -26,7 +26,7 @@ std = ["alloc"]
 alloc = []
 
 # Internal feature, used when generating docs. *You* are not supposed to enable this feature!
-docsrs = ["document-features"]
+docsrs = ["document-features", "default"]
 
 [package.metadata.docs.rs]
-features = ["alloc", "std", "docsrs"]
+features = ["docsrs"]
