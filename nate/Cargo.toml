@@ -1,6 +1,6 @@
 [package]
 name = "nate"
-version = "0.1.10"
+version = "0.1.11"
 edition = "2018"
 # rust-version = "1.54"
 authors = ["René Kijewski <crates.io@k6i.de>"]
@@ -14,7 +14,7 @@ readme = "README.md"
 
 [dependencies]
 nate-common = { path = "../nate-common", version = "0.1.10", default-features = false }
-nate-derive = { path = "../nate-derive", version = "0.1.10", default-features = false }
+nate-derive = { path = "../nate-derive", version = "0.1.11", default-features = false }
 
 # optional features:
 document-features = { version = "=0.2.1", optional = true }
