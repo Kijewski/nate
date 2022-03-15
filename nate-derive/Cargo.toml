@@ -17,7 +17,7 @@ proc-macro = true
 
 [dependencies]
 darling = "0.13.1"
-nom = "7.1.0"
+nom = "7.1.1"
 nom_locate = "4.0.0"
 quote = { version = "1.0.15", default-features = false }
 syn = { version = "1.0.86", default-features = false }
