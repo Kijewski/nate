@@ -1,14 +1,12 @@
 [workspace]
 members = [
     "nate",
-    "nate-common",
     "nate-derive",
     "nate-tests",
 ]
 
 default-members = [
     "nate",
-    "nate-common",
     "nate-derive",
     "nate-tests",
 ]

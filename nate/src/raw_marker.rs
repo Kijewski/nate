@@ -2,8 +2,8 @@
 
 use std::prelude::v1::*;
 
-use crate::details::{alloc, std};
-use crate::XmlEscape;
+use super::details::{alloc, std};
+use super::XmlEscape;
 
 /// Types implementing this marker don't need to be escaped.
 pub trait RawMarker {}
