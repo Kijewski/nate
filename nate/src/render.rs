@@ -1,60 +1,9 @@
-// Copyright (c) 2021-2022 René Kijewski <crates.io@k6i.de>
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-#![no_std]
-#![cfg_attr(feature = "docsrs", feature(doc_cfg))]
-#![forbid(unsafe_code)]
-#![allow(unused_attributes)]
-#![warn(absolute_paths_not_starting_with_crate)]
-#![warn(elided_lifetimes_in_paths)]
-#![warn(explicit_outlives_requirements)]
-#![warn(meta_variable_misuse)]
-#![warn(missing_copy_implementations)]
-#![warn(missing_debug_implementations)]
-#![warn(missing_docs)]
-#![warn(non_ascii_idents)]
-#![warn(noop_method_call)]
-#![warn(single_use_lifetimes)]
-#![warn(trivial_casts)]
-#![warn(unreachable_pub)]
-#![warn(unused_crate_dependencies)]
-#![warn(unused_extern_crates)]
-#![warn(unused_lifetimes)]
-#![warn(unused_results)]
 #![no_implicit_prelude]
 
-//! ## NaTE — Not a Template Engine
-//!
-//! [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Kijewski/nate/CI?logo=github)](https://github.com/Kijewski/nate/actions/workflows/ci.yml)
-//! [![Crates.io](https://img.shields.io/crates/v/nate-common?logo=rust)](https://crates.io/crates/nate)
-//! ![Minimum supported Rust version](https://img.shields.io/badge/msrv-1.54-informational?logo=rust)
-//! [![License](https://img.shields.io/crates/l/nate-common?color=informational&logo=apache)](/LICENSES)
-//!
-//! This libary is used during the runtime of the generated code.
-//!
-//! ## Feature flags
-#![cfg_attr(feature = "docsrs", doc = ::document_features::document_features!())]
-
-#[doc(hidden)]
-pub mod details;
-mod raw_marker;
-
-use details::alloc;
-use details::std::fmt::{self, Arguments, Write as _};
-use details::std::prelude::v1::*;
-use details::std::write;
-pub use raw_marker::{EscapeTag, RawMarker, RawTag};
+use super::details::alloc;
+use super::details::std::fmt::{self, Arguments, Write as _};
+use super::details::std::prelude::v1::*;
+use super::details::std::write;
 
 #[doc(hidden)]
 pub trait WriteAny {
@@ -71,7 +20,7 @@ pub trait RenderInto {
     /// Render the output into an fmt::Write object
     #[inline]
     fn render_fmt(&self, output: impl fmt::Write) -> fmt::Result {
-        self.render_into(details::WriteFmt(output))
+        self.render_into(super::details::WriteFmt(output))
     }
 
     /// Render the output into an io::Write object
@@ -79,7 +28,7 @@ pub trait RenderInto {
     #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "alloc", feature = "std"))))]
     #[inline]
     fn render_io(&self, output: impl alloc::io::Write) -> fmt::Result {
-        self.render_into(details::WriteIo(output))
+        self.render_into(super::details::WriteIo(output))
     }
 
     /// Render the output into a new string

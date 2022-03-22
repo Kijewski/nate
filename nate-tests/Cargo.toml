@@ -3,7 +3,7 @@ name = "nate-tests"
 version = "0.1.0"
 edition = "2018"
 authors = ["René Kijewski <crates.io@k6i.de>"]
-license = "Apache-2.0"
+license = "Apache-2.0 WITH LLVM-exception"
 publish = false
 
 [dependencies]

@@ -11,6 +11,22 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// --- LLVM Exceptions to the Apache 2.0 License ----
+//
+// As an exception, if, as a result of your compiling your source code, portions
+// of this Software are embedded into an Object form of such source code, you
+// may redistribute such embedded portions in such Object form without complying
+// with the conditions of Sections 4(a), 4(b) and 4(d) of the License.
+//
+// In addition, if you combine or link compiled forms of this Software with
+// software that is licensed under the GPLv2 ("Combined Software") and if a
+// court of competent jurisdiction determines that the patent provision (Section
+// 3), the indemnity provision (Section 9) or other Section of the License
+// conflicts with the conditions of the GPLv2, you may retroactively and
+// prospectively choose to deem waived or otherwise exclude such Section(s) of
+// the License, but only in their entirety and only with respect to the Combined
+// Software.
 
 #![forbid(unsafe_code)]
 #![allow(unused_attributes)]
@@ -36,8 +52,8 @@
 //!
 //! [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Kijewski/nate/CI?logo=github)](https://github.com/Kijewski/nate/actions/workflows/ci.yml)
 //! [![Crates.io](https://img.shields.io/crates/v/nate-derive?logo=rust)](https://crates.io/crates/nate)
-//! ![Minimum supported Rust version](https://img.shields.io/badge/msrv-1.54-informational?logo=rust)
-//! [![License](https://img.shields.io/crates/l/nate-derive?color=informational&logo=apache)](/LICENSES)
+//! ![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.53+-important?logo=rust "Minimum Supported Rust Version")
+//! [![License](https://img.shields.io/badge/license-Apache--2.0%20WITH%20LLVM--exception-informational?logo=apache)](https://github.com/Kijewski/nate/blob/v0.2.0/LICENSE "Apache-2.0 WITH LLVM-exception")
 //!
 //! Proc-macros for [NaTE](https://crates.io/crates/nate).
 //!

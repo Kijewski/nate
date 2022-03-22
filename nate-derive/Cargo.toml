@@ -1,10 +1,10 @@
 [package]
 name = "nate-derive"
-version = "0.1.11"
+version = "0.2.0"
 edition = "2018"
-# rust-version = "1.54"
+# rust-version = "1.53"
 authors = ["René Kijewski <crates.io@k6i.de>"]
-license = "Apache-2.0"
+license = "Apache-2.0 WITH LLVM-exception"
 description = "Proc-macros for NaTE"
 homepage = "https://github.com/Kijewski/nate"
 repository = "https://github.com/Kijewski/nate"
@@ -17,10 +17,10 @@ proc-macro = true
 
 [dependencies]
 darling = "0.13.1"
-nom = "7.1.0"
+nom = "7.1.1"
 nom_locate = "4.0.0"
-quote = { version = "1.0.15", default-features = false }
-syn = { version = "1.0.86", default-features = false }
+quote = { version = "1.0.16", default-features = false }
+syn = { version = "1.0.89", default-features = false }
 
 [features]
 default = []

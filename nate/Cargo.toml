@@ -1,10 +1,10 @@
 [package]
 name = "nate"
-version = "0.1.11"
+version = "0.2.0"
 edition = "2018"
-# rust-version = "1.54"
+# rust-version = "1.53"
 authors = ["René Kijewski <crates.io@k6i.de>"]
-license = "Apache-2.0"
+license = "Apache-2.0 WITH LLVM-exception"
 description = "Not a Template Engine. Derive Display using a template."
 homepage = "https://github.com/Kijewski/nate"
 repository = "https://github.com/Kijewski/nate"
@@ -13,23 +13,11 @@ keywords = ["html", "template", "no-std"]
 readme = "README.md"
 
 [dependencies]
-nate-common = { path = "../nate-common", version = "0.1.10", default-features = false }
-nate-derive = { path = "../nate-derive", version = "0.1.11", default-features = false }
-
-# optional features:
-document-features = { version = "=0.2.1", optional = true }
+nate-derive = { path = "../nate-derive", version = "0.2.0", default-features = false }
 
 [features]
 default = ["std", "alloc"]
 ## disable [`#![no_std]`](https://docs.rust-embedded.org/book/intro/no-std.html), implies `alloc`
-##
-std = ["alloc", "nate-common/std"]
+std = ["alloc"]
 ## enable features found in the [alloc](https://doc.rust-lang.org/stable/alloc/) crate, e.g. std::io::Write
-##
-alloc = ["nate-common/alloc"]
-
-# Internal feature, used when generating docs. *You* are not supposed to enable this feature!
-docsrs = ["nate-common/docsrs", "document-features", "default"]
-
-[package.metadata.docs.rs]
-features = ["docsrs"]
+alloc = []
