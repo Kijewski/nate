@@ -1,4 +1,6 @@
+use std::env::current_dir;
 use std::fmt::{Display, Formatter};
+use std::path::PathBuf;
 
 use nom::Offset;
 
@@ -11,6 +13,14 @@ pub(crate) enum CompileError {
     Syn(syn::Error),
     Lex(proc_macro::LexError),
     Fmt(std::fmt::Error),
+    IoError(IoOp, PathBuf, std::io::Error),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum IoOp {
+    Open,
+    Read,
+    Write,
 }
 
 impl std::error::Error for CompileError {
@@ -21,6 +31,7 @@ impl std::error::Error for CompileError {
             CompileError::Syn(err) => Some(err),
             CompileError::Lex(err) => Some(err),
             CompileError::Fmt(err) => Some(err),
+            CompileError::IoError(_, _, err) => Some(err),
         }
     }
 }
@@ -58,10 +69,22 @@ impl From<std::fmt::Error> for CompileError {
 impl Display for CompileError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let err = match self {
-            CompileError::Fmt(_) => return write!(f, "Could not format generated code"),
+            CompileError::Fmt(_) => return write!(f, "could not format generated code"),
             CompileError::Darling(err) => return write!(f, "{}", err),
             CompileError::Syn(err) => return write!(f, "{}", err),
-            CompileError::Lex(err) => return write!(f, "Could not parse input: {}", err),
+            CompileError::Lex(err) => return write!(f, "could not parse input: {}", err),
+            CompileError::IoError(op, path, err) => {
+                let path = current_dir()
+                    .ok()
+                    .and_then(|cwd| path.strip_prefix(cwd).ok())
+                    .unwrap_or(path);
+                let op = match op {
+                    IoOp::Open => "open",
+                    IoOp::Read => "read from",
+                    IoOp::Write => "write to",
+                };
+                return write!(f, "could not {} {:?}: {}", op, path, err);
+            },
             CompileError::Nom(err) => err,
         };
 
