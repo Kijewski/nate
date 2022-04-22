@@ -1,6 +1,6 @@
 [package]
 name = "nate"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2018"
 # rust-version = "1.53"
 authors = ["René Kijewski <crates.io@k6i.de>"]
@@ -13,7 +13,7 @@ keywords = ["html", "template", "no-std"]
 readme = "README.md"
 
 [dependencies]
-nate-derive = { path = "../nate-derive", version = "0.2.0", default-features = false }
+nate-derive = { path = "../nate-derive", version = "0.2.1", default-features = false }
 
 [features]
 default = ["std", "alloc"]

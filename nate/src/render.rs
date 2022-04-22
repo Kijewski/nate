@@ -1,13 +1,14 @@
 #![no_implicit_prelude]
 
+#[cfg(feature = "alloc")]
 use super::details::alloc;
-use super::details::std::fmt::{self, Arguments, Write as _};
+use super::details::std::fmt::{self, Write as _};
 use super::details::std::prelude::v1::*;
 use super::details::std::write;
 
 #[doc(hidden)]
 pub trait WriteAny {
-    fn write_fmt(&mut self, fmt: Arguments<'_>) -> fmt::Result;
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> fmt::Result;
 }
 
 /// Optimized trait methods to render a NaTE template
@@ -34,7 +35,7 @@ pub trait RenderInto {
     /// Render the output into a new string
     #[cfg(feature = "alloc")]
     #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "alloc", feature = "std"))))]
-    fn render_string(&self) -> Result<alloc::string::String, fmt::Error> {
+    fn render_string(&self) -> Result<String, fmt::Error> {
         let mut result = String::new();
         self.render_fmt(&mut result)?;
         Ok(result)
@@ -43,7 +44,7 @@ pub trait RenderInto {
     /// Render the output into a new vector
     #[cfg(feature = "alloc")]
     #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "alloc", feature = "std"))))]
-    fn render_bytes(&self) -> Result<alloc::vec::Vec<u8>, fmt::Error> {
+    fn render_bytes(&self) -> Result<Vec<u8>, fmt::Error> {
         let mut result = Vec::new();
         self.render_io(&mut result)?;
         Ok(result)
@@ -74,8 +75,7 @@ struct XmlEscapeWriter<'a, 'b>(&'a mut fmt::Formatter<'b>);
 
 impl fmt::Write for XmlEscapeWriter<'_, '_> {
     fn write_str(&mut self, mut s: &str) -> fmt::Result {
-        loop {
-            let mut done = true;
+        'outer: loop {
             for (i, c) in s.as_bytes().iter().enumerate() {
                 let c = match c {
                     b'"' => "&#34;",
@@ -85,17 +85,12 @@ impl fmt::Write for XmlEscapeWriter<'_, '_> {
                     b'>' => "&#62;",
                     _ => continue,
                 };
-                write!(self.0, "{}{}", &s[..i], c)?;
+                self.0.write_str(&s[..i])?;
+                self.0.write_str(c)?;
                 s = &s[i + 1..];
-                done = false;
-                break;
+                continue 'outer;
             }
-            if done {
-                if !s.is_empty() {
-                    self.0.write_str(s)?;
-                }
-                break Ok(());
-            }
+            break self.0.write_str(s);
         }
     }
 
