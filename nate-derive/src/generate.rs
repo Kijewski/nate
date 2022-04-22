@@ -10,7 +10,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::DeriveInput;
 
-use crate::compile_error::CompileError;
+use crate::compile_error::{CompileError, IoOp};
 use crate::nate_span::SpanStatic;
 use crate::parse::{input_into_blocks, Block, DataSection};
 use crate::TemplateAttrs;
@@ -80,33 +80,30 @@ const _: () = {{
     write!(content, "{}", TAIL)?;
 
     if let Some(output) = output {
-        let mut f = OpenOptions::new()
+        let f = OpenOptions::new()
             .create(true)
             .write(true)
             .truncate(true)
-            .open(&output)
-            .expect("Could not open output file");
-        write!(f, "{}", &content)
-            .expect("Could not write to output file after successfully opening it");
+            .open(&output);
+        let mut f = match f {
+            Ok(f) => f,
+            Err(err) => return Err(CompileError::IoError(IoOp::Open, output, err)),
+        };
+        write!(f, "{}", &content).map_err(|err| CompileError::IoError(IoOp::Write, output, err))?;
     }
 
     Ok(content.parse()?)
 }
 
-fn load_file(path: &Path) -> String {
+fn load_file(path: &Path) -> Result<String, CompileError> {
     let mut buf = String::new();
     match OpenOptions::new().read(true).open(&path) {
-        Ok(mut f) => {
-            let _ = f
-                .read_to_string(&mut buf)
-                .expect("Could not read source file even after successfully opening it.");
+        Ok(mut f) => match f.read_to_string(&mut buf) {
+            Ok(_) => Ok(buf),
+            Err(err) => Err(CompileError::IoError(IoOp::Read, path.to_owned(), err)),
         },
-        Err(err) => {
-            eprintln!("Could not open file {:?}: {:?}", path, err);
-            panic!();
-        },
+        Err(err) => Err(CompileError::IoError(IoOp::Open, path.to_owned(), err)),
     }
-    buf
 }
 
 fn push_address(span: &SpanInput, output: &mut impl Write) -> Result<(), CompileError> {
@@ -132,7 +129,7 @@ fn parse_file(
 ) -> Result<(), CompileError> {
     use DataSection::*;
 
-    let i = load_file(&path);
+    let i = load_file(&path)?;
     for (block_index, blocks) in parse(path, i, opts)?.into_iter().enumerate() {
         match blocks {
             ParsedData::Code(blocks) => {
@@ -246,9 +243,9 @@ fn parse_file(
     Ok(())
 }
 
-fn parse(path: PathBuf, i: String, opts: &TemplateAttrs) -> Result<Vec<ParsedData>, CompileError> {
+fn parse(path: PathBuf, i: String, _opts: &TemplateAttrs) -> Result<Vec<ParsedData>, CompileError> {
     let mut output = Vec::new();
-    parse_into(path, i, &mut output, opts)?;
+    parse_into(path, i, &mut output, _opts)?;
     Ok(output)
 }
 
@@ -256,7 +253,7 @@ fn parse_into(
     path: PathBuf,
     i: String,
     accu: &mut Vec<ParsedData>,
-    opts: &TemplateAttrs,
+    _opts: &TemplateAttrs,
 ) -> Result<(), CompileError> {
     let span = SpanInput::new_with_shared(i, Some(path.into()));
     let path = span.get_rc();
@@ -294,8 +291,8 @@ const _: &'static [::nate::details::std::primitive::u8] = \
                     _ => Path::new(&var("CARGO_MANIFEST_DIR").map_err(|_| std::fmt::Error)?)
                         .join(include_path),
                 };
-                let buf = load_file(&include_path);
-                parse_into(include_path, buf, accu, opts)?;
+                let buf = load_file(&include_path)?;
+                parse_into(include_path, buf, accu, _opts)?;
             },
         }
     }

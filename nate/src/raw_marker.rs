@@ -2,7 +2,9 @@
 
 use std::prelude::v1::*;
 
-use super::details::{alloc, std};
+#[cfg(feature = "alloc")]
+use super::details::alloc;
+use super::details::std;
 use super::XmlEscape;
 
 /// Types implementing this marker don't need to be escaped.

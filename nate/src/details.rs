@@ -14,7 +14,7 @@ pub extern crate core as std;
 
 #[cfg(feature = "std")]
 pub use std as alloc;
-use std::fmt::{self, Arguments};
+use std::fmt;
 use std::marker::PhantomData;
 use std::prelude::v1::*;
 
@@ -26,7 +26,7 @@ pub(crate) struct WriteFmt<W: fmt::Write>(pub(crate) W);
 #[cfg(feature = "alloc")]
 impl<W: alloc::io::Write> super::WriteAny for WriteIo<W> {
     #[inline]
-    fn write_fmt(&mut self, fmt: Arguments<'_>) -> fmt::Result {
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> fmt::Result {
         match <W as alloc::io::Write>::write_fmt(&mut self.0, fmt) {
             Ok(_) => Ok(()),
             Err(_) => Err(fmt::Error),
@@ -34,10 +34,9 @@ impl<W: alloc::io::Write> super::WriteAny for WriteIo<W> {
     }
 }
 
-#[cfg(feature = "alloc")]
 impl<W: fmt::Write> super::WriteAny for WriteFmt<W> {
     #[inline]
-    fn write_fmt(&mut self, fmt: Arguments<'_>) -> fmt::Result {
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> fmt::Result {
         <W as fmt::Write>::write_fmt(&mut self.0, fmt)
     }
 }
