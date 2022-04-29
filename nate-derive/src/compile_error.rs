@@ -19,6 +19,7 @@ pub(crate) enum CompileError {
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum IoOp {
     Open,
+    Metadata,
     Read,
     Write,
 }
@@ -80,6 +81,7 @@ impl Display for CompileError {
                     .unwrap_or(path);
                 let op = match op {
                     IoOp::Open => "open",
+                    IoOp::Metadata => "query",
                     IoOp::Read => "read from",
                     IoOp::Write => "write to",
                 };

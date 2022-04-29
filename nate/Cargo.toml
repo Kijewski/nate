@@ -1,6 +1,6 @@
 [package]
 name = "nate"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2018"
 # rust-version = "1.53"
 authors = ["René Kijewski <crates.io@k6i.de>"]
