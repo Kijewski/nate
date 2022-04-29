@@ -2,9 +2,11 @@ use std::borrow::Cow;
 use std::env::var;
 use std::fmt::Write;
 use std::fs::OpenOptions;
-use std::io::{Read, Write as _};
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
+use blake2::digest::FixedOutput;
+use blake2::Digest;
 use darling::FromDeriveInput;
 use proc_macro::TokenStream;
 use quote::quote;
@@ -13,7 +15,7 @@ use syn::DeriveInput;
 use crate::compile_error::{CompileError, IoOp};
 use crate::nate_span::SpanStatic;
 use crate::parse::{input_into_blocks, Block, DataSection};
-use crate::TemplateAttrs;
+use crate::{Context, Settings};
 
 pub(crate) type SpanInput = SpanStatic<(), Option<Cow<'static, Path>>>;
 
@@ -27,27 +29,33 @@ const TAIL: &str = r#"
             ::nate::details::std::fmt::Result::Ok(())
         }
     }
-};
+}
 "#;
 
 pub(crate) fn generate(input: TokenStream) -> Result<TokenStream, CompileError> {
     let ast: DeriveInput = syn::parse(input)?;
-    let opts = TemplateAttrs::from_derive_input(&ast)?;
+    let mut ctx = Context {
+        settings: Settings::from_derive_input(&ast)?,
+        ..Default::default()
+    };
 
     let (impl_generics, type_generics, where_clause) = ast.generics.split_for_impl();
     let ident = ast.ident;
 
     let base = var("CARGO_MANIFEST_DIR").unwrap();
-    let path = Path::new(&base).join(&opts.path);
-    let output = opts.generated.as_ref().map(|s| Path::new(&base).join(s));
+    let path = Path::new(&base).join(&ctx.settings.path);
+    let output = ctx
+        .settings
+        .generated
+        .as_ref()
+        .map(|s| Path::new(&base).join(s));
 
     let mut content = String::new();
     write!(
         content,
-        r#"
-#[automatically_derived]
-#[allow(unused_qualifications)]
-const _: () = {{
+        r#"{{
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
     impl {impl_generics} ::nate::details::std::fmt::Display
         for {ident} {type_generics} {where_clause}
     {{
@@ -60,6 +68,9 @@ const _: () = {{
         }}
     }}
 
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    #[allow(clippy::suspicious_else_formatting)]
     impl {impl_generics} ::nate::RenderInto
         for {ident} {type_generics} {where_clause}
     {{
@@ -75,35 +86,38 @@ const _: () = {{
         where_clause = quote!(#where_clause),
         ident = quote!(#ident),
     )?;
-
-    parse_file(path, &mut content, &opts)?;
+    parse_file(path, &mut content, &mut ctx)?;
     write!(content, "{}", TAIL)?;
 
-    if let Some(output) = output {
-        let f = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(&output);
-        let mut f = match f {
-            Ok(f) => f,
-            Err(err) => return Err(CompileError::IoError(IoOp::Open, output, err)),
-        };
-        write!(f, "{}", &content).map_err(|err| CompileError::IoError(IoOp::Write, output, err))?;
-    }
-
-    Ok(content.parse()?)
-}
-
-fn load_file(path: &Path) -> Result<String, CompileError> {
-    let mut buf = String::new();
-    match OpenOptions::new().read(true).open(&path) {
-        Ok(mut f) => match f.read_to_string(&mut buf) {
-            Ok(_) => Ok(buf),
-            Err(err) => Err(CompileError::IoError(IoOp::Read, path.to_owned(), err)),
+    let output = match output {
+        Some(output) => output,
+        None => {
+            ctx.strings_hash.update(content.as_bytes());
+            let out_dir = AsRef::<Path>::as_ref(&env!("NATE_DERIVE_OUTDIR"));
+            let mut temp_name = hex::encode(ctx.strings_hash.finalize_fixed());
+            temp_name.push_str(".rs");
+            out_dir.join(temp_name)
         },
-        Err(err) => Err(CompileError::IoError(IoOp::Open, path.to_owned(), err)),
+    };
+
+    let f = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&output);
+    let mut f = match f {
+        Ok(f) => f,
+        Err(err) => return Err(CompileError::IoError(IoOp::Open, output, err)),
+    };
+    if let Err(err) = write!(f, "{}", &content) {
+        return Err(CompileError::IoError(IoOp::Write, output, err));
     }
+
+    let output = output.to_str().unwrap();
+    let content = quote! {
+        const _: () = ::core::include!(#output);
+    };
+    Ok(content.into())
 }
 
 fn push_address(span: &SpanInput, output: &mut impl Write) -> Result<(), CompileError> {
@@ -125,12 +139,12 @@ fn push_address(span: &SpanInput, output: &mut impl Write) -> Result<(), Compile
 fn parse_file(
     path: PathBuf,
     mut output: impl Write,
-    opts: &TemplateAttrs,
+    ctx: &mut Context,
 ) -> Result<(), CompileError> {
     use DataSection::*;
 
-    let i = load_file(&path)?;
-    for (block_index, blocks) in parse(path, i, opts)?.into_iter().enumerate() {
+    let i = ctx.load_file(&path)?;
+    for (block_index, blocks) in parse(path, i, ctx)?.into_iter().enumerate() {
         match blocks {
             ParsedData::Code(blocks) => {
                 for code in blocks.into_iter() {
@@ -153,7 +167,7 @@ fn parse_file(
                             push_address(s, &mut output)?;
                             writeln!(
                                 output,
-                                "let _nate_{block}_{data} = &({expr});",
+                                "    let _nate_{block}_{data} = &({expr});",
                                 block = block_index,
                                 data = data_index,
                                 expr = s.as_str(),
@@ -166,7 +180,7 @@ fn parse_file(
                         Escaped(_) => {
                             writeln!(
                                 output,
-                                "let _nate_{block}_{data} = \
+                                "    let _nate_{block}_{data} = \
                                     (&::nate::details::TagWrapper::new(_nate_{block}_{data})).\
                                     wrap(_nate_{block}_{data});",
                                 block = block_index,
@@ -176,7 +190,7 @@ fn parse_file(
                         Debug(_) | Verbose(_) => {
                             writeln!(
                                 output,
-                                "let _nate_{block}_{data} = \
+                                "    let _nate_{block}_{data} = \
                                     ::nate::XmlEscape(_nate_{block}_{data});",
                                 block = block_index,
                                 data = data_index,
@@ -190,10 +204,11 @@ fn parse_file(
                         push_address(s, &mut output)?;
                     },
                 }
-                write!(
-                    output,
-                    "output.write_fmt(::nate::details::std::format_args!(\n\""
-                )?;
+
+                writeln!(output, "    <_ as ::nate::WriteAny>::write_fmt(")?;
+                writeln!(output, "        &mut output,")?;
+                writeln!(output, "        ::nate::details::std::format_args!(")?;
+                write!(output, "            \"")?;
                 for (data_index, data) in blocks.iter().enumerate() {
                     match data {
                         Data(s) => {
@@ -229,13 +244,15 @@ fn parse_file(
                         Data(_) => {},
                         Raw(_) | Escaped(_) | Debug(_) | Verbose(_) => writeln!(
                             output,
-                            "_nate_{block}_{data} = _nate_{block}_{data},",
+                            "            _nate_{block}_{data} = _nate_{block}_{data},",
                             block = block_index,
                             data = data_index
                         )?,
                     }
                 }
-                writeln!(output, "))?;\n}}")?;
+                writeln!(output, "        ),")?;
+                writeln!(output, "    )?;")?;
+                writeln!(output, "}}")?;
             },
         }
     }
@@ -243,9 +260,9 @@ fn parse_file(
     Ok(())
 }
 
-fn parse(path: PathBuf, i: String, _opts: &TemplateAttrs) -> Result<Vec<ParsedData>, CompileError> {
+fn parse(path: PathBuf, i: String, ctx: &mut Context) -> Result<Vec<ParsedData>, CompileError> {
     let mut output = Vec::new();
-    parse_into(path, i, &mut output, _opts)?;
+    parse_into(path, i, &mut output, ctx)?;
     Ok(output)
 }
 
@@ -253,7 +270,7 @@ fn parse_into(
     path: PathBuf,
     i: String,
     accu: &mut Vec<ParsedData>,
-    _opts: &TemplateAttrs,
+    ctx: &mut Context,
 ) -> Result<(), CompileError> {
     let span = SpanInput::new_with_shared(i, Some(path.into()));
     let path = span.get_rc();
@@ -262,7 +279,7 @@ fn parse_into(
     let s = SpanInput::new(format!(
         "\
 {{\n\
-const _: &'static [::nate::details::std::primitive::u8] = \
+const _: &[::nate::details::std::primitive::u8] = \
 ::nate::details::std::include_bytes!({:?});",
         path
     ));
@@ -291,8 +308,8 @@ const _: &'static [::nate::details::std::primitive::u8] = \
                     _ => Path::new(&var("CARGO_MANIFEST_DIR").map_err(|_| std::fmt::Error)?)
                         .join(include_path),
                 };
-                let buf = load_file(&include_path)?;
-                parse_into(include_path, buf, accu, _opts)?;
+                let buf = ctx.load_file(&include_path)?;
+                parse_into(include_path, buf, accu, ctx)?;
             },
         }
     }

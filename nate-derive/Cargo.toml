@@ -1,6 +1,6 @@
 [package]
 name = "nate-derive"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2018"
 # rust-version = "1.53"
 authors = ["René Kijewski <crates.io@k6i.de>"]
@@ -16,7 +16,9 @@ readme = "README.md"
 proc-macro = true
 
 [dependencies]
+blake2 = "=0.10"
 darling = ">= 0.12, <= 0.14"
+hex = "=0.4"
 nom = "=7"
 nom_locate = "4.0.0"
 quote = { version = "=1", default-features = false }

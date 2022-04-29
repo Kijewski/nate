@@ -53,11 +53,12 @@
 //! [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Kijewski/nate/CI?logo=github)](https://github.com/Kijewski/nate/actions/workflows/ci.yml)
 //! [![Crates.io](https://img.shields.io/crates/v/nate-derive?logo=rust)](https://crates.io/crates/nate)
 //! ![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.53+-important?logo=rust "Minimum Supported Rust Version")
-//! [![License](https://img.shields.io/badge/license-Apache--2.0%20WITH%20LLVM--exception-informational?logo=apache)](https://github.com/Kijewski/nate/blob/v0.2.0/LICENSE "Apache-2.0 WITH LLVM-exception")
+//! [![License](https://img.shields.io/badge/license-Apache--2.0%20WITH%20LLVM--exception-informational?logo=apache)](https://github.com/Kijewski/nate/blob/v0.2.2/LICENSE "Apache-2.0 WITH LLVM-exception")
 //!
 //! Proc-macros for [NaTE](https://crates.io/crates/nate).
 //!
 //! This libary implements the `#![derive(Nate)]` annotation.
+//!
 
 mod compile_error;
 mod generate;
@@ -65,10 +66,17 @@ mod nate_span;
 mod parse;
 mod strip;
 
+use std::fs::OpenOptions;
+use std::io::Read;
+use std::path::Path;
+
+use blake2::{Blake2s256, Digest};
+use compile_error::IoOp;
 use darling::FromDeriveInput;
 use proc_macro::TokenStream;
 use quote::quote;
 
+use crate::compile_error::CompileError;
 use crate::generate::generate;
 use crate::strip::Strip;
 
@@ -108,11 +116,38 @@ pub fn derive_nate(input: TokenStream) -> TokenStream {
 
 #[derive(Debug, Default, FromDeriveInput)]
 #[darling(attributes(template))]
-struct TemplateAttrs {
+struct Settings {
     path: String,
     #[darling(default)]
     generated: Option<String>,
     #[darling(default)]
     #[allow(unused)] // TODO
     strip: Strip,
+}
+
+#[derive(Debug, Default)]
+struct Context {
+    settings: Settings,
+    strings_hash: Blake2s256,
+}
+
+impl Context {
+    fn load_file(&mut self, path: &Path) -> Result<String, CompileError> {
+        let mut f = OpenOptions::new()
+            .read(true)
+            .open(&path)
+            .map_err(|err| CompileError::IoError(IoOp::Open, path.to_owned(), err))?;
+        let len = f
+            .metadata()
+            .map_err(|err| CompileError::IoError(IoOp::Metadata, path.to_owned(), err))?
+            .len();
+        let mut s = String::with_capacity(len as usize);
+        let _ = f
+            .read_to_string(&mut s)
+            .map_err(|err| CompileError::IoError(IoOp::Read, path.to_owned(), err))?;
+        self.strings_hash.update((s.len() as u128).to_be_bytes());
+        self.strings_hash.update(s.as_bytes());
+        self.strings_hash.update([0xff_u8]);
+        Ok(s)
+    }
 }
