@@ -80,7 +80,7 @@ use crate::compile_error::CompileError;
 use crate::generate::generate;
 use crate::strip::Strip;
 
-/// Implement [fmt::Display](core::fmt::Display) for a struct or enum.
+/// Implement [fmt::Display](core::fmt::Display) for a struct or enum
 ///
 /// Usage:
 ///

@@ -119,3 +119,17 @@ Blocks don't need to be closed at the end of the file.
 To debug any errors you can add an argument as in `#[template(generated = "some/path/generated.rs")]`.
 The generated code is stored in there even if there were parsing errors in the Rust code.
 The path is relative to the project root (where your Cargo.toml lives).
+
+## Feature flags
+
+* *std*<sup> \[enabled by default\]</sup> — enable features found in [std](https://doc.rust-lang.org/stable/std/) crate, e.g. printing the value of a `MutexGuard`
+
+* *alloc*<sup> \[enabled by default, enabled by `std`\]</sup> — enable features found in the [alloc](https://doc.rust-lang.org/stable/alloc/) crate, e.g. `io::Write`
+
+* *faster*<sup> \[enabled by default\]</sup> — use specialized algorithms for faster integer and float printing
+
+* *itoa*<sup> \[enabled by default, enabled by `faster`\]</sup> — faster integer printing using [itoa](https://crates.io/crates/itoa)
+
+* *ryu*<sup> \[enabled by default, enabled by `faster`\]</sup> — faster float printing [ryu](https://crates.io/crates/ryu)
+
+* *ryu-js* — faster float printing [ryu-js](https://crates.io/crates/ryu-js); takes precedence over `ryu`

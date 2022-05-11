@@ -1,6 +1,6 @@
 [package]
 name = "nate"
-version = "0.2.2"
+version = "0.3.0"
 edition = "2018"
 # rust-version = "1.53"
 authors = ["René Kijewski <crates.io@k6i.de>"]
@@ -13,11 +13,28 @@ keywords = ["html", "template", "no-std"]
 readme = "README.md"
 
 [dependencies]
-nate-derive = { path = "../nate-derive", version = "0.2.1", default-features = false }
+nate-derive = { path = "../nate-derive", version = "0.3.0", default-features = false }
+
+itoa_ = { package = "itoa", version = "=1", optional = true }
+ryu_ = { package = "ryu", version = "=1", optional = true }
+ryu_js_ = { package = "ryu-js", version = "=0.2", optional = true }
 
 [features]
-default = ["std", "alloc"]
+default = ["std", "faster"]
 ## disable [`#![no_std]`](https://docs.rust-embedded.org/book/intro/no-std.html), implies `alloc`
 std = ["alloc"]
 ## enable features found in the [alloc](https://doc.rust-lang.org/stable/alloc/) crate, e.g. std::io::Write
 alloc = []
+## use specialized algorithms for faster integer and float printing
+faster = ["itoa", "ryu"]
+## faster integer printing
+itoa = ["itoa_"]
+## faster float printing
+ryu = ["ryu_"]
+## faster float printing, JavaScript compatible; takes precedence over `ryu`
+ryu-js = ["ryu_js_"]
+
+docsrs = ["default"]
+
+[package.metadata.docs.rs]
+features = ["docsrs"]

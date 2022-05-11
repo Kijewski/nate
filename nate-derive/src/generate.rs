@@ -78,8 +78,6 @@ pub(crate) fn generate(input: TokenStream) -> Result<TokenStream, CompileError> 
             &self,
             mut output: impl ::nate::WriteAny,
         ) -> ::nate::details::std::fmt::Result {{
-            #[allow(unused_imports)]
-            use ::nate::details::{{RawKind as _, EscapeKind as _}};
 "#,
         impl_generics = quote!(#impl_generics),
         type_generics = quote!(#type_generics),
@@ -158,7 +156,12 @@ fn parse_file(
                         push_address(s, &mut output)?;
                     },
                 }
-                writeln!(output, "{{")?;
+                writeln!(
+                    output,
+                    "{{
+    #[allow(unused_imports)]
+    use ::nate::details::{{EscapeKind as _, FloatKind as _, IntKind as _, RawKind as _}};",
+                )?;
 
                 for (data_index, data) in blocks.iter().enumerate() {
                     match data {
@@ -181,7 +184,7 @@ fn parse_file(
                             writeln!(
                                 output,
                                 "    let _nate_{block}_{data} = \
-                                    (&::nate::details::TagWrapper::new(_nate_{block}_{data})).\
+                                    (&::nate::details::EscapeWrapper::new(_nate_{block}_{data})).\
                                     wrap(_nate_{block}_{data});",
                                 block = block_index,
                                 data = data_index,
@@ -191,7 +194,7 @@ fn parse_file(
                             writeln!(
                                 output,
                                 "    let _nate_{block}_{data} = \
-                                    ::nate::XmlEscape(_nate_{block}_{data});",
+                                    ::nate::details::XmlEscape(_nate_{block}_{data});",
                                 block = block_index,
                                 data = data_index,
                             )?;

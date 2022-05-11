@@ -174,22 +174,36 @@
 //!
 //! ## Feature flags
 //!
-//! * *std* – disable [`#![no_std]`](https://docs.rust-embedded.org/book/intro/no-std.html), implies `alloc`
+//! * *std*<sup> \[enabled by default\]</sup> — enable features found in [std] crate, e.g. printing the value of a [MutexGuard]
 //!
-//! * *alloc* – enable features found in the [alloc] crate, e.g. [io::Write]
+//! * *alloc*<sup> \[enabled by default, enabled by `std`\]</sup> — enable features found in the [alloc] crate, e.g. [io::Write]
+//!
+//! * *faster*<sup> \[enabled by default\]</sup> — use specialized algorithms for faster integer and float printing
+//!
+//! * *itoa*<sup> \[enabled by default, enabled by `faster`\]</sup> — faster integer printing using [itoa](https://crates.io/crates/itoa)
+//!
+//! * *ryu*<sup> \[enabled by default, enabled by `faster`\]</sup> — faster float printing [ryu](https://crates.io/crates/ryu)
+//!
+//! * *ryu-js* — faster float printing [ryu-js](https://crates.io/crates/ryu-js); takes precedence over `ryu`
 //!
 
 #[doc(hidden)]
 pub mod details;
-mod raw_marker;
-mod render;
+mod escape;
+mod fast_float;
+mod fast_integer;
 
 pub use ::nate_derive::Nate;
 
 #[cfg(doc)]
 use crate::details::{
     alloc,
-    std::{fmt, io},
+    std::sync::MutexGuard,
+    std::{self, fmt, io},
 };
-pub use crate::raw_marker::{EscapeTag, RawMarker, RawTag};
-pub use crate::render::{RenderInto, WriteAny, XmlEscape};
+pub use crate::details::{RenderInto, WriteAny};
+pub use crate::escape::RawMarker;
+#[cfg(any(feature = "ryu", feature = "ryu-js"))]
+pub use crate::fast_float::FloatMarker;
+#[cfg(feature = "itoa")]
+pub use crate::fast_integer::IntMarker;
