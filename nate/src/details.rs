@@ -1,5 +1,3 @@
-#![no_implicit_prelude]
-
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 pub extern crate alloc;
 
@@ -14,57 +12,97 @@ pub extern crate core as std;
 
 #[cfg(feature = "std")]
 pub use std as alloc;
-use std::fmt;
-use std::marker::PhantomData;
-use std::prelude::v1::*;
+
+pub mod itoa {
+    #[cfg(feature = "itoa")]
+    pub use ::itoa_::{Buffer, Integer};
+}
+
+pub mod ryu {
+    #[cfg(all(feature = "ryu", not(feature = "ryu-js")))]
+    pub use ::ryu_::{Buffer, Float};
+    #[cfg(feature = "ryu-js")]
+    pub use ::ryu_js_::{Buffer, Float};
+}
+
+pub use crate::escape::{EscapeKind, EscapeWrapper, RawKind, XmlEscape};
+#[cfg(feature = "ryu")]
+pub use crate::fast_float::FloatKind;
+#[cfg(feature = "itoa")]
+pub use crate::fast_integer::IntKind;
+
+#[doc(hidden)]
+#[cfg(not(any(feature = "ryu", feature = "ryu-js")))]
+pub trait FloatKind {}
+
+#[doc(hidden)]
+#[cfg(not(feature = "itoa"))]
+pub trait IntKind {}
+
+#[doc(hidden)]
+pub trait WriteAny {
+    fn write_fmt(&mut self, fmt: std::fmt::Arguments<'_>) -> std::fmt::Result;
+}
 
 #[cfg(feature = "alloc")]
 pub(crate) struct WriteIo<W: alloc::io::Write>(pub(crate) W);
 
-pub(crate) struct WriteFmt<W: fmt::Write>(pub(crate) W);
+pub(crate) struct WriteFmt<W: std::fmt::Write>(pub(crate) W);
 
 #[cfg(feature = "alloc")]
-impl<W: alloc::io::Write> super::WriteAny for WriteIo<W> {
+impl<W: alloc::io::Write> WriteAny for WriteIo<W> {
     #[inline]
-    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> fmt::Result {
+    fn write_fmt(&mut self, fmt: std::fmt::Arguments<'_>) -> std::fmt::Result {
         match <W as alloc::io::Write>::write_fmt(&mut self.0, fmt) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(fmt::Error),
+            std::result::Result::Ok(_) => std::result::Result::Ok(()),
+            std::result::Result::Err(_) => std::result::Result::Err(std::fmt::Error),
         }
     }
 }
 
-impl<W: fmt::Write> super::WriteAny for WriteFmt<W> {
+impl<W: std::fmt::Write> WriteAny for WriteFmt<W> {
     #[inline]
-    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> fmt::Result {
-        <W as fmt::Write>::write_fmt(&mut self.0, fmt)
+    fn write_fmt(&mut self, fmt: std::fmt::Arguments<'_>) -> std::fmt::Result {
+        <W as std::fmt::Write>::write_fmt(&mut self.0, fmt)
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
-pub struct TagWrapper<E>(PhantomData<fn() -> *const E>);
+/// Optimized trait methods to render a NaTE template
+///
+/// Every NaTE template implements this trait.
+pub trait RenderInto {
+    #[doc(hidden)]
+    fn render_into(&self, output: impl WriteAny) -> std::fmt::Result;
 
-impl<E> TagWrapper<E> {
+    /// Render the output into an fmt::Write object
     #[inline]
-    pub fn new(_: &E) -> Self {
-        Self(PhantomData)
+    fn render_fmt(&self, output: impl std::fmt::Write) -> std::fmt::Result {
+        self.render_into(WriteFmt(output))
+    }
+
+    /// Render the output into an io::Write object
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "alloc", feature = "std"))))]
+    #[inline]
+    fn render_io(&self, output: impl alloc::io::Write) -> std::fmt::Result {
+        self.render_into(WriteIo(output))
+    }
+
+    /// Render the output into a new string
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "alloc", feature = "std"))))]
+    fn render_string(&self) -> std::result::Result<alloc::string::String, std::fmt::Error> {
+        let mut result = alloc::string::String::new();
+        self.render_fmt(&mut result)?;
+        std::result::Result::Ok(result)
+    }
+
+    /// Render the output into a new vector
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "alloc", feature = "std"))))]
+    fn render_bytes(&self) -> std::result::Result<alloc::vec::Vec<u8>, std::fmt::Error> {
+        let mut result = alloc::vec::Vec::new();
+        self.render_io(&mut result)?;
+        std::result::Result::Ok(result)
     }
 }
-
-pub trait RawKind {
-    #[inline]
-    fn wrap<'a, T: super::RawMarker>(&self, value: &'a T) -> &'a T {
-        value
-    }
-}
-
-pub trait EscapeKind {
-    #[inline]
-    fn wrap<'a, T>(&self, value: &'a T) -> super::XmlEscape<&'a T> {
-        super::XmlEscape(value)
-    }
-}
-
-impl<T: super::RawMarker> RawKind for TagWrapper<T> {}
-
-impl<T> EscapeKind for &TagWrapper<T> {}
