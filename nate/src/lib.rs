@@ -180,16 +180,15 @@
 //!
 
 #[doc(hidden)]
-pub mod details;
-mod raw_marker;
-mod render;
-
-pub use ::nate_derive::Nate;
-
+pub use ::nate_::details;
 #[cfg(doc)]
-use crate::details::{
+use ::nate_::details::{
     alloc,
     std::{fmt, io},
 };
-pub use crate::raw_marker::{EscapeTag, RawMarker, RawTag};
-pub use crate::render::{RenderInto, WriteAny, XmlEscape};
+pub use ::nate_::details::{EscapeWrapper as EscapeTag, XmlEscape};
+pub use ::nate_::{Nate, RawMarker, RenderInto, WriteAny};
+
+#[doc(hidden)]
+#[derive(Debug, Clone, Copy, Default)]
+pub struct RawTag;

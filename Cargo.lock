@@ -124,14 +124,25 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "nate"
-version = "0.2.2"
+version = "0.2.3"
+dependencies = [
+ "nate 0.3.0",
+]
+
+[[package]]
+name = "nate"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58558afa4c6ec2fbe281a4a8a84b7b4257876184db417df188e1b48629cb0c37"
 dependencies = [
  "nate-derive",
 ]
 
 [[package]]
 name = "nate-derive"
-version = "0.2.2"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "070e4471e34ceaeef7cbad1f498d948dc0b230a1df5c8f944e7775ae631d8473"
 dependencies = [
  "blake2",
  "darling",
@@ -146,7 +157,7 @@ dependencies = [
 name = "nate-tests"
 version = "0.1.0"
 dependencies = [
- "nate",
+ "nate 0.2.3",
 ]
 
 [[package]]
