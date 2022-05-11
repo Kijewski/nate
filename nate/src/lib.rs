@@ -174,15 +174,15 @@
 //!
 //! ## Feature flags
 //!
-//! * *std*<sup> \[enabled by default\]</sup> — enable features found in [std] crate, e.g. printing the value of a [MutexGuard]
+//! * *std* <sup>\[enabled by default\]</sup> — enable features found in [std] crate, e.g. printing the value of a [MutexGuard]
 //!
-//! * *alloc*<sup> \[enabled by default, enabled by `std`\]</sup> — enable features found in the [alloc] crate, e.g. [io::Write]
+//! * *alloc* <sup>\[enabled by default, enabled by `std`\]</sup> — enable features found in the [alloc] crate, e.g. [io::Write]
 //!
-//! * *faster*<sup> \[enabled by default\]</sup> — use specialized algorithms for faster integer and float printing
+//! * *faster* <sup>\[enabled by default\]</sup> — use specialized algorithms for faster integer and float printing
 //!
-//! * *itoa*<sup> \[enabled by default, enabled by `faster`\]</sup> — faster integer printing using [itoa](https://crates.io/crates/itoa)
+//! * *itoa* <sup>\[enabled by default, enabled by `faster`\]</sup> — faster integer printing using [itoa](https://crates.io/crates/itoa)
 //!
-//! * *ryu*<sup> \[enabled by default, enabled by `faster`\]</sup> — faster float printing [ryu](https://crates.io/crates/ryu)
+//! * *ryu* <sup>\[enabled by default, enabled by `faster`\]</sup> — faster float printing [ryu](https://crates.io/crates/ryu)
 //!
 //! * *ryu-js* — faster float printing [ryu-js](https://crates.io/crates/ryu-js); takes precedence over `ryu`
 //!
