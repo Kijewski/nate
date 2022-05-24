@@ -193,7 +193,7 @@ mod escape;
 mod fast_float;
 mod fast_integer;
 
-pub use ::nate_derive::Nate;
+pub use ::nate_derive::{addr, Nate};
 
 #[cfg(doc)]
 use crate::details::{

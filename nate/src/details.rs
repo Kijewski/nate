@@ -42,6 +42,7 @@ pub trait IntKind {}
 #[doc(hidden)]
 pub trait WriteAny {
     fn write_fmt(&mut self, fmt: std::fmt::Arguments<'_>) -> std::fmt::Result;
+    fn write_str(&mut self, s: &str) -> std::fmt::Result;
 }
 
 #[cfg(feature = "alloc")]
@@ -58,12 +59,22 @@ impl<W: alloc::io::Write> WriteAny for WriteIo<W> {
             std::result::Result::Err(_) => std::result::Result::Err(std::fmt::Error),
         }
     }
+
+    #[inline]
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        self.write_fmt(format_args!("{}", s))
+    }
 }
 
 impl<W: std::fmt::Write> WriteAny for WriteFmt<W> {
     #[inline]
     fn write_fmt(&mut self, fmt: std::fmt::Arguments<'_>) -> std::fmt::Result {
         <W as std::fmt::Write>::write_fmt(&mut self.0, fmt)
+    }
+
+    #[inline]
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        <W as std::fmt::Write>::write_str(&mut self.0, s)
     }
 }
 
