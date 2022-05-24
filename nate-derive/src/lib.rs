@@ -151,3 +151,9 @@ impl Context {
         Ok(s)
     }
 }
+
+#[doc(hidden)]
+#[proc_macro_attribute]
+pub fn addr(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
