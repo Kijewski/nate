@@ -272,7 +272,7 @@ impl<T: IntMarker> IntMarker for cell::Ref<'_, T> {
 
     #[inline]
     fn escape(&self) -> Self::Escaped {
-        let value: &T = &*self;
+        let value: &T = self;
         value.escape()
     }
 }
@@ -282,7 +282,7 @@ impl<T: IntMarker> IntMarker for cell::RefMut<'_, T> {
 
     #[inline]
     fn escape(&self) -> Self::Escaped {
-        let value: &T = &*self;
+        let value: &T = self;
         value.escape()
     }
 }
@@ -304,7 +304,7 @@ const _: () = {
 
         #[inline]
         fn escape(&self) -> Self::Escaped {
-            let value: &T = &*self;
+            let value: &T = self;
             value.escape()
         }
     }
@@ -315,7 +315,7 @@ const _: () = {
 
         #[inline]
         fn escape(&self) -> Self::Escaped {
-            let value: &T = &*self;
+            let value: &T = self;
             value.escape()
         }
     }
@@ -326,7 +326,7 @@ const _: () = {
 
         #[inline]
         fn escape(&self) -> Self::Escaped {
-            let value: &T = &*self;
+            let value: &T = self;
             value.escape()
         }
     }
@@ -337,7 +337,7 @@ const _: () = {
 
         #[inline]
         fn escape(&self) -> Self::Escaped {
-            let value: &T = &*self;
+            let value: &T = self;
             value.escape()
         }
     }
@@ -353,7 +353,7 @@ const _: () = {
 
         #[inline]
         fn escape(&self) -> Self::Escaped {
-            let value: &T = &*self;
+            let value: &T = self;
             value.escape()
         }
     }
@@ -364,7 +364,7 @@ const _: () = {
 
         #[inline]
         fn escape(&self) -> Self::Escaped {
-            let value: &T = &*self;
+            let value: &T = self;
             value.escape()
         }
     }
@@ -375,7 +375,7 @@ const _: () = {
 
         #[inline]
         fn escape(&self) -> Self::Escaped {
-            let value: &T = &*self;
+            let value: &T = self;
             value.escape()
         }
     }
