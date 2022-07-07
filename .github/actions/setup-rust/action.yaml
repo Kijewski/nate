@@ -15,19 +15,32 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions-rs/toolchain@v1
+    - name: Rustup Cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.rustup/downloads
+          ~/.rustup/toolchains
+          ~/.rustup/update-hashes
+        key: ${{ runner.os }}-x86_64-rustup
+
+    - name: Install Toolchain
+      uses: actions-rs/toolchain@v1
       id: toolchain-install
       with:
         profile: minimal
         override: true
         toolchain: ${{ inputs.toolchain }}
-        components: ${{ inputs.components }}  
-    - uses: actions/cache@v3
+        components: ${{ inputs.components }}
+
+    - name: Build Cache
+      uses: actions/cache@v3
       with:
         path: |
           ~/.cargo/registry/index/
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
+          ~/.cargo/bin/
           target/
         key: |
           ${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-${{ steps.toolchain-install.outputs.rustc_hash }}-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
