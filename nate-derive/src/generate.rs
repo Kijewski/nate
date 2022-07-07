@@ -55,7 +55,6 @@ pub(crate) fn generate(input: TokenStream) -> Result<TokenStream, CompileError> 
     write!(
         content,
         r#"{{
-    #[automatically_derived]
     #[allow(unused_qualifications)]
     impl {impl_generics} ::nate::details::std::fmt::Display
         for {ident} {type_generics} {where_clause}
@@ -69,8 +68,10 @@ pub(crate) fn generate(input: TokenStream) -> Result<TokenStream, CompileError> 
         }}
     }}
 
-    #[automatically_derived]
+    #[allow(unknown_lints)]
     #[allow(unused_qualifications)]
+    #[allow(clippy::needless_borrow)]
+    #[allow(clippy::needless_borrowed_reference)]
     #[allow(clippy::suspicious_else_formatting)]
     impl {impl_generics} ::nate::RenderInto
         for {ident} {type_generics} {where_clause}
