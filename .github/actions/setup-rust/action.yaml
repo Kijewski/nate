@@ -15,6 +15,10 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Remove rustfmt
+      run: rm -f ~/.cargo/bin/rustfmt ~/.cargo/bin/cargo-fmt
+      shell: bash
+
     - name: Rustup Cache
       uses: actions/cache@v3
       with:
@@ -22,7 +26,7 @@ runs:
           ~/.rustup/downloads
           ~/.rustup/toolchains
           ~/.rustup/update-hashes
-        key: ${{ runner.os }}-x86_64-rustup
+        key: v3-rustup-${{ runner.os }}
 
     - name: Install Toolchain
       uses: actions-rs/toolchain@v1
@@ -32,6 +36,14 @@ runs:
         override: true
         toolchain: ${{ inputs.toolchain }}
         components: ${{ inputs.components }}
+
+    - name: Update self
+      run: rustup self update || true
+      shell: bash
+
+    - name: Update
+      run: rustup update || true
+      shell: bash
 
     - name: Build Cache
       uses: actions/cache@v3
@@ -43,7 +55,7 @@ runs:
           ~/.cargo/bin/
           target/
         key: |
-          ${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-${{ steps.toolchain-install.outputs.rustc_hash }}-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+          v3-${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-${{ steps.toolchain-install.outputs.rustc_hash }}-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
         restore-keys: |
-          ${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-${{ steps.toolchain-install.outputs.rustc_hash }}-
-          ${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-
+          v3-${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-${{ steps.toolchain-install.outputs.rustc_hash }}-
+          v3-${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-
