@@ -12,32 +12,27 @@ jobs:
   fmt:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          key: check
+          key: fmt
           toolchain: nightly
           components: rustfmt
 
       - run: cargo fmt --all -- --check
 
-  check:
+  clippy:
     strategy:
       matrix:
         toolchain:
           - "1.53"
           - stable
           - nightly
-
-    name: "Check/${{ matrix.toolchain }}"
-
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
@@ -46,9 +41,26 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           components: clippy
 
-      - run: cargo check --workspace --all-targets
-
       - run: cargo clippy --all-targets -- -D warnings
+
+  check:
+    strategy:
+      matrix:
+        toolchain:
+          - "1.53"
+          - stable
+          - nightly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          key: check
+          toolchain: ${{ matrix.toolchain }}
+
+      - run: cargo check --workspace --all-targets
 
   test:
     strategy:
@@ -58,16 +70,12 @@ jobs:
           - stable
           - nightly
         os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-
-    name: "Test/${{ matrix.toolchain }} on ${{ matrix.os }}"
-
+          - ubuntu-20.04
+          - windows-2022
+          - macos-12
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
@@ -78,38 +86,64 @@ jobs:
 
       - run: cargo test --workspace --all-targets
 
-  doc:
-    name: "Documentation"
 
+  minimum-versions:
+    strategy:
+      matrix:
+        toolchain:
+          - "1.53"
+          - stable
+          - nightly
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          key: minimum-versions
+          toolchain: ${{ matrix.toolchain }}
+
+      - run: RUSTC_BOOTSTRAP=1 cargo generate-lockfile -Zminimal-versions
+
+      - run: cargo test --all-targets --package nate -- --show-output
+
+  doc:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
           key: doc
           toolchain: nightly
-          components: clippy
 
       - run: cargo doc --workspace --features docsrs
 
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          key: doc
+          toolchain: stable
+
+      - run: cargo package --package nate
+
   audit:
     runs-on: ubuntu-latest
-
-    name: "Cargo audit"
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
           key: audit
           toolchain: stable
-          components: clippy
 
       - name: Audit
         uses: actions-rs/audit-check@v1

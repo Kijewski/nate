@@ -26,24 +26,30 @@ runs:
           ~/.rustup/downloads
           ~/.rustup/toolchains
           ~/.rustup/update-hashes
-        key: v3-rustup-${{ runner.os }}
+        key: v4-rustup-${{ runner.os }}
+
+    - name: Install Rustup
+      shell: bash
+      run: which rustup || curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash || true
+
+    - name: Update Rustup
+      shell: bash
+      run: rustup self update || true
+
+    - name: Update
+      shell: bash
+      run: rustup update || true
 
     - name: Install Toolchain
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       id: toolchain-install
       with:
-        profile: minimal
-        override: true
         toolchain: ${{ inputs.toolchain }}
         components: ${{ inputs.components }}
 
-    - name: Update self
-      run: rustup self update || true
+    - name: Set default
       shell: bash
-
-    - name: Update
-      run: rustup update || true
-      shell: bash
+      run: rustup default ${{ inputs.toolchain }}
 
     - name: Build Cache
       uses: actions/cache@v3
@@ -55,7 +61,7 @@ runs:
           ~/.cargo/bin/
           target/
         key: |
-          v3-${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-${{ steps.toolchain-install.outputs.rustc_hash }}-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+          v4-${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-${{ steps.toolchain-install.outputs.cachekey }}-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
         restore-keys: |
-          v3-${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-${{ steps.toolchain-install.outputs.rustc_hash }}-
-          v3-${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-
+          v4-${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-${{ steps.toolchain-install.outputs.cachekey }}-
+          v4-${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-

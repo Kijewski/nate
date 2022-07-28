@@ -3,6 +3,7 @@
 #[cfg(feature = "alloc")]
 use crate::details::alloc;
 use crate::details::itoa::{Buffer, Integer};
+use crate::details::std::marker::Copy;
 use crate::details::std::{cell, fmt, num};
 use crate::escape::EscapeWrapper;
 
@@ -35,16 +36,16 @@ pub trait IntKind {
     }
 }
 
-pub struct ItoaEscape<T: Integer>(T);
+pub struct ItoaEscape<T: Integer + Copy>(T);
 
-impl<T: Integer> fmt::Display for ItoaEscape<T> {
+impl<T: Integer + Copy> fmt::Display for ItoaEscape<T> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(Buffer::new().format(self.0))
     }
 }
 
-impl<T: Integer> fmt::Debug for ItoaEscape<T> {
+impl<T: Integer + Copy> fmt::Debug for ItoaEscape<T> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self, f)

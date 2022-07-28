@@ -3,6 +3,7 @@
 #[cfg(feature = "alloc")]
 use crate::details::alloc;
 use crate::details::ryu::{Buffer, Float};
+use crate::details::std::marker::Copy;
 use crate::details::std::{cell, fmt, num};
 use crate::escape::EscapeWrapper;
 
@@ -35,16 +36,16 @@ pub trait FloatKind {
     }
 }
 
-pub struct FloatEscape<T: Float>(T);
+pub struct FloatEscape<T: Float + Copy>(T);
 
-impl<T: Float> fmt::Display for FloatEscape<T> {
+impl<T: Float + Copy> fmt::Display for FloatEscape<T> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(Buffer::new().format(self.0))
     }
 }
 
-impl<T: Float> fmt::Debug for FloatEscape<T> {
+impl<T: Float + Copy> fmt::Debug for FloatEscape<T> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self, f)
