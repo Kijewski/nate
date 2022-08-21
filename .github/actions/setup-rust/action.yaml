@@ -19,15 +19,6 @@ runs:
       run: rm -f ~/.cargo/bin/rustfmt ~/.cargo/bin/cargo-fmt
       shell: bash
 
-    - name: Rustup Cache
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.rustup/downloads
-          ~/.rustup/toolchains
-          ~/.rustup/update-hashes
-        key: v4-rustup-${{ runner.os }}
-
     - name: Install Rustup
       shell: bash
       run: which rustup || curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash || true
@@ -50,18 +41,3 @@ runs:
     - name: Set default
       shell: bash
       run: rustup default ${{ inputs.toolchain }}
-
-    - name: Build Cache
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          ~/.cargo/bin/
-          target/
-        key: |
-          v4-${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-${{ steps.toolchain-install.outputs.cachekey }}-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
-        restore-keys: |
-          v4-${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-${{ steps.toolchain-install.outputs.cachekey }}-
-          v4-${{ inputs.key }}-${{ runner.os }}-${{ inputs.toolchain }}-
