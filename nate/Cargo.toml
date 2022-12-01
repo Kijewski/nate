@@ -1,6 +1,6 @@
 [package]
 name = "nate"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2018"
 # rust-version = "1.53"
 authors = ["René Kijewski <crates.io@k6i.de>"]
@@ -13,7 +13,7 @@ keywords = ["html", "template", "no-std"]
 readme = "README.md"
 
 [dependencies]
-nate-derive = { path = "../nate-derive", version = "=0.3.1" }
+nate-derive = { path = "../nate-derive", version = "0.3.3" }
 
 itoa_ = { package = "itoa", version = "=1", optional = true }
 ryu_ = { package = "ryu", version = "=1", optional = true }
