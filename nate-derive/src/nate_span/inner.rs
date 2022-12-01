@@ -130,10 +130,7 @@ where
     fn offset(&self, second: &Self) -> usize {
         let fst = self.offset();
         let snd = second.offset();
-        match fst >= snd {
-            true => fst - snd,
-            false => snd - fst,
-        }
+        if fst >= snd { fst - snd } else { snd - fst }
     }
 }
 

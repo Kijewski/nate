@@ -98,16 +98,18 @@ impl Display for CompileError {
         let path = input
             .get_shared()
             .as_deref()
-            .and_then(|p| p.to_str())
+            .and_then(std::path::Path::to_str)
             .unwrap_or("??");
         let row = input.location_line();
         let column = input.naive_get_utf8_column();
 
         let source_after = &source[source.offset(input)..];
-        let source_after = match source_after.char_indices().enumerate().take(73).last() {
-            Some((72, (i, _))) => format!("{:?}...", &source_after[..i]),
-            _ => format!("{:?}", source_after),
-        };
+        let source_after =
+            if let Some((72, (i, _))) = source_after.char_indices().enumerate().take(73).last() {
+                format!("{:?}...", &source_after[..i])
+            } else {
+                format!("{:?}", source_after)
+            };
 
         write!(
             f,
