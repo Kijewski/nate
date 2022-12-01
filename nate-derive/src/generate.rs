@@ -90,15 +90,14 @@ pub(crate) fn generate(input: TokenStream) -> Result<TokenStream, CompileError> 
     write!(content, "{}", TAIL)?;
     let content = content.as_str();
 
-    let output = match output {
-        Some(output) => output,
-        None => {
-            ctx.strings_hash.update(content.as_bytes());
-            let out_dir = AsRef::<Path>::as_ref(&env!("NATE_DERIVE_OUTDIR"));
-            let mut temp_name = hex::encode(ctx.strings_hash.finalize_fixed());
-            temp_name.push_str(".rs");
-            out_dir.join(temp_name)
-        },
+    let output = if let Some(output) = output {
+        output
+    } else {
+        ctx.strings_hash.update(content.as_bytes());
+        let out_dir = AsRef::<Path>::as_ref(&env!("NATE_DERIVE_OUTDIR"));
+        let mut temp_name = hex::encode(ctx.strings_hash.finalize_fixed());
+        temp_name.push_str(".rs");
+        out_dir.join(temp_name)
     };
 
     let f = OpenOptions::new().write(true).create(true).open(&output);
@@ -132,13 +131,13 @@ fn parse_file(
     mut output: impl Write,
     ctx: &mut Context,
 ) -> Result<(), CompileError> {
-    use DataSection::*;
+    use DataSection::{Data, Debug, Escaped, Raw, Verbose};
 
     let i = ctx.load_file(&path)?;
     for (block_index, blocks) in parse(path, i, ctx)?.into_iter().enumerate() {
         let blocks = match blocks {
             ParsedData::Code(blocks) => {
-                for code in blocks.into_iter() {
+                for code in blocks {
                     writeln!(output, "/* {} */", AddrAnnotation(&code))?;
                     writeln!(output, "{}", code.as_str())?;
                 }

@@ -32,7 +32,7 @@ impl Strip {
             },
             Strip::Trim | Strip::Eager => {
                 let mut stripped = String::with_capacity(src.len());
-                for line in src.lines().map(|s| s.trim()).filter(|&s| !s.is_empty()) {
+                for line in src.lines().map(str::trim).filter(|&s| !s.is_empty()) {
                     if !stripped.is_empty() {
                         stripped.push('\n');
                     }

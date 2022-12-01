@@ -48,14 +48,14 @@
 #![warn(unused_results)]
 #![allow(clippy::many_single_char_names)]
 
-//! ## NaTE — Not a Template Engine
+//! ## `NaTE` — Not a Template Engine
 //!
 //! [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Kijewski/nate/CI?logo=github)](https://github.com/Kijewski/nate/actions/workflows/ci.yml)
 //! [![Crates.io](https://img.shields.io/crates/v/nate-derive?logo=rust)](https://crates.io/crates/nate)
 //! ![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.53+-important?logo=rust "Minimum Supported Rust Version")
 //! [![License](https://img.shields.io/badge/license-Apache--2.0%20WITH%20LLVM--exception-informational?logo=apache)](https://github.com/Kijewski/nate/blob/v0.2.2/LICENSE "Apache-2.0 WITH LLVM-exception")
 //!
-//! Proc-macros for [NaTE](https://crates.io/crates/nate).
+//! Proc-macros for [`NaTE`](https://crates.io/crates/nate).
 //!
 //! This libary implements the `#![derive(Nate)]` annotation.
 //!
@@ -66,6 +66,7 @@ mod nate_span;
 mod parse;
 mod strip;
 
+use std::convert::TryInto;
 use std::fs::OpenOptions;
 use std::io::Read;
 use std::path::Path;
@@ -80,7 +81,7 @@ use crate::compile_error::CompileError;
 use crate::generate::generate;
 use crate::strip::Strip;
 
-/// Implement [fmt::Display](core::fmt::Display) for a struct or enum
+/// Implement [`fmt::Display`](core::fmt::Display) for a struct or enum
 ///
 /// Usage:
 ///
@@ -135,13 +136,13 @@ impl Context {
     fn load_file(&mut self, path: &Path) -> Result<String, CompileError> {
         let mut f = OpenOptions::new()
             .read(true)
-            .open(&path)
+            .open(path)
             .map_err(|err| CompileError::IoError(IoOp::Open, path.to_owned(), err))?;
         let len = f
             .metadata()
             .map_err(|err| CompileError::IoError(IoOp::Metadata, path.to_owned(), err))?
             .len();
-        let mut s = String::with_capacity(len as usize);
+        let mut s = String::with_capacity(len.try_into().unwrap_or_default());
         let _ = f
             .read_to_string(&mut s)
             .map_err(|err| CompileError::IoError(IoOp::Read, path.to_owned(), err))?;

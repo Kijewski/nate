@@ -28,10 +28,7 @@ pub(crate) fn input_into_blocks(i: SpanInput) -> impl Iterator<Item = Result<Blo
             },
             b => b,
         };
-        match b.is_empty() {
-            false => Some(Ok(b)),
-            true => None,
-        }
+        if b.is_empty() { None } else { Some(Ok(b)) }
     })
 }
 
@@ -73,15 +70,16 @@ impl Iterator for BlockIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         let i = self.0.take()?;
-        match i.is_empty() {
-            true => None,
-            false => match parse_ws_block(i) {
+        if i.is_empty() {
+            None
+        } else {
+            match parse_ws_block(i) {
                 Ok((i, block)) => {
                     self.0 = Some(i);
                     Some(Ok(block))
                 },
                 Err(err) => Some(Err(CompileError::Nom(err))),
-            },
+            }
         }
     }
 }
@@ -106,9 +104,10 @@ impl Iterator for WsBlockIter {
 }
 
 fn fail_if_empty(b: SpanInput) -> Result<SpanInput, nom::Err<nom::error::Error<SpanInput>>> {
-    match b.is_empty() {
-        true => Err(nom::Err::Failure(error_position!(b, ErrorKind::NonEmpty))),
-        false => Ok(b),
+    if b.is_empty() {
+        Err(nom::Err::Failure(error_position!(b, ErrorKind::NonEmpty)))
+    } else {
+        Ok(b)
     }
 }
 
@@ -142,18 +141,18 @@ fn parse_block(
 ) -> IResult<SpanInput, (bool, SpanInput, bool)> {
     let inner = |i: SpanInput| -> IResult<SpanInput, (SpanInput, bool)> {
         let (i, inner) = opt(take_until(end))(i)?;
-        let inner = match inner {
-            Some(inner) => inner,
-            None => {
-                let (i, inner) = rest(i)?;
-                return Ok((i, (inner, false)));
-            },
+        let inner = if let Some(inner) = inner {
+            inner
+        } else {
+            let (i, inner) = rest(i)?;
+            return Ok((i, (inner, false)));
         };
 
         let (i, _) = i.take_split(end.len());
-        let (inner, trim) = match (*inner).ends_with('-') {
-            true => (inner.take(inner.len() - 1), true),
-            false => (inner, false),
+        let (inner, trim) = if (*inner).ends_with('-') {
+            (inner.take(inner.len() - 1), true)
+        } else {
+            (inner, false)
         };
 
         let inner = inner.trim();
