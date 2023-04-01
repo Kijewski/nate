@@ -56,36 +56,33 @@ const _: () = {
 
     struct XmlEscapeWriter<'a, 'b>(&'a mut fmt::Formatter<'b>);
 
-    impl fmt::Write for XmlEscapeWriter<'_, '_> {
-        fn write_str(&mut self, mut s: &str) -> fmt::Result {
-            'outer: loop {
-                for (i, c) in s.as_bytes().iter().enumerate() {
-                    let c = match c {
-                        b'"' => "&#34;",
-                        b'&' => "&#38;",
-                        b'\'' => "&#39;",
-                        b'<' => "&#60;",
-                        b'>' => "&#62;",
-                        _ => continue,
-                    };
-                    self.0.write_str(&s[..i])?;
-                    self.0.write_str(c)?;
-                    s = &s[i + 1..];
-                    continue 'outer;
-                }
-                break self.0.write_str(s);
-            }
-        }
+    const MIN_CHAR: u8 = b'"';
+    const MAX_CHAR: u8 = b'>';
+    const TABLE: [Option<&&str>; (MAX_CHAR - MIN_CHAR + 1) as usize] = {
+        let mut table = [None; (MAX_CHAR - MIN_CHAR + 1) as usize];
+        table[(b'"' - MIN_CHAR) as usize] = Some(&"&#34;");
+        table[(b'&' - MIN_CHAR) as usize] = Some(&"&#38;");
+        table[(b'\'' - MIN_CHAR) as usize] = Some(&"&#39;");
+        table[(b'<' - MIN_CHAR) as usize] = Some(&"&#60;");
+        table[(b'>' - MIN_CHAR) as usize] = Some(&"&#62;");
+        table
+    };
 
-        fn write_char(&mut self, c: char) -> fmt::Result {
-            self.0.write_str(match c {
-                '"' => "&#34;",
-                '&' => "&#38;",
-                '\'' => "&#39;",
-                '<' => "&#60;",
-                '>' => "&#62;",
-                c => return self.0.write_char(c),
-            })
+    impl fmt::Write for XmlEscapeWriter<'_, '_> {
+        fn write_str(&mut self, string: &str) -> fmt::Result {
+            let mut last = 0;
+            for (index, byte) in string.bytes().enumerate() {
+                let escaped = match byte {
+                    MIN_CHAR..=MAX_CHAR => TABLE[(byte - MIN_CHAR) as usize],
+                    _ => None,
+                };
+                if let Some(escaped) = escaped {
+                    self.0.write_str(&string[last..index])?;
+                    self.0.write_str(escaped)?;
+                    last = index + 1;
+                }
+            }
+            self.0.write_str(&string[last..])
         }
     }
 };
