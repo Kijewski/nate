@@ -27,7 +27,7 @@ jobs:
     strategy:
       matrix:
         toolchain:
-          - "1.53"
+          - "1.56"
           - stable
           - nightly
     runs-on: ubuntu-latest
@@ -47,7 +47,7 @@ jobs:
     strategy:
       matrix:
         toolchain:
-          - "1.53"
+          - "1.56"
           - stable
           - nightly
     runs-on: ubuntu-latest
@@ -66,7 +66,7 @@ jobs:
     strategy:
       matrix:
         toolchain:
-          - "1.53"
+          - "1.56"
           - stable
           - nightly
         os:
@@ -80,7 +80,7 @@ jobs:
       # Use old clang when needed.
       # See https://github.com/strawlab/iana-time-zone/pull/79
       - uses: maxim-lobanov/setup-xcode@v1
-        if: matrix.os == 'macos-12' && matrix.toolchain == '1.53'
+        if: matrix.os == 'macos-12' && matrix.toolchain == '1.56'
         with:
           xcode-version: "13.4.1"
 
@@ -98,7 +98,7 @@ jobs:
     strategy:
       matrix:
         toolchain:
-          - "1.53"
+          - "1.56"
           - stable
           - nightly
     runs-on: ubuntu-20.04
@@ -126,7 +126,7 @@ jobs:
           key: doc
           toolchain: nightly
 
-      - run: cargo doc --workspace --features docsrs
+      - run: RUSTDOCFLAGS="-D warnings --cfg docsrs" cargo +nightly doc --no-deps
 
   package:
     runs-on: ubuntu-latest

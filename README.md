@@ -1,8 +1,8 @@
 ## NaTE — Not a Template Engine
 
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Kijewski/nate/CI?logo=github)](https://github.com/Kijewski/nate/actions/workflows/ci.yml)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/Kijewski/nate/ci.yml?branch=main)](https://github.com/Kijewski/nate/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/nate?logo=rust)](https://crates.io/crates/nate)
-![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.53+-important?logo=rust "Minimum Supported Rust Version")
+![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.56+-important?logo=rust "Minimum Supported Rust Version")
 [![License](https://img.shields.io/badge/license-Apache--2.0%20WITH%20LLVM--exception-informational?logo=apache)](https://github.com/Kijewski/nate/blob/v0.2.2/LICENSE "Apache-2.0 WITH LLVM-exception")
 
 This is *not* a template engine, but sugar to implicitly call `write!(…)` like in PHP.
@@ -125,11 +125,3 @@ The path is relative to the project root (where your Cargo.toml lives).
 * *std* <sup>\[enabled by default\]</sup> — enable features found in [std](https://doc.rust-lang.org/stable/std/) crate, e.g. printing the value of a `MutexGuard`
 
 * *alloc* <sup>\[enabled by default, enabled by `std`\]</sup> — enable features found in the [alloc](https://doc.rust-lang.org/stable/alloc/) crate, e.g. `io::Write`
-
-* *faster* <sup>\[enabled by default\]</sup> — use specialized algorithms for faster integer and float printing
-
-* *itoa* <sup>\[enabled by default, enabled by `faster`\]</sup> — faster integer printing using [itoa](https://crates.io/crates/itoa)
-
-* *ryu* <sup>\[enabled by default, enabled by `faster`\]</sup> — faster float printing using [ryu](https://crates.io/crates/ryu)
-
-* *ryu-js* — faster float printing [ryu-js](https://crates.io/crates/ryu-js); takes precedence over `ryu`
