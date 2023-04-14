@@ -93,6 +93,7 @@ fn test_cell() -> Result {
     Ok(())
 }
 
+// This test would fail if the float specialization is not used.
 #[test]
 fn test_float_cell() -> Result {
     #[derive(Nate)]

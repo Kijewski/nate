@@ -191,7 +191,7 @@ mod raw;
 
 pub use ::nate_derive::{addr, Nate};
 
-pub use crate::details::{RenderInto, WriteAny};
+pub use crate::details::{EscapeWrapper, RenderInto, WriteAny};
 pub use crate::fast_float::FloatMarker;
 pub use crate::fast_integer::IntMarker;
 pub use crate::raw::RawMarker;

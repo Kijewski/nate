@@ -110,7 +110,7 @@ pub fn derive_nate(input: TokenStream) -> TokenStream {
     let err = format!("{}", err);
     Into::into(quote!(
         const _: () = {
-            ::nate::details::std::compile_error!(#err);
+            ::nate::details::core::compile_error!(#err);
         };
     ))
 }

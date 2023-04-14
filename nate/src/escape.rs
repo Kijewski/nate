@@ -5,12 +5,12 @@ use core::fmt::{self, Write as _};
 
 use crate::details::EscapeWrapper;
 
-impl<E> EscapeKind for &EscapeWrapper<E> {}
+impl<E: fmt::Display> EscapeKind for &EscapeWrapper<E> {}
 
 #[doc(hidden)]
 pub trait EscapeKind {
     #[inline]
-    fn wrap<'a, T>(&self, value: &'a T) -> XmlEscape<&'a T> {
+    fn wrap<'a, T: fmt::Display>(&self, value: &'a T) -> XmlEscape<&'a T> {
         XmlEscape(value)
     }
 }
