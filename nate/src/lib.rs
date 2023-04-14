@@ -29,7 +29,7 @@
 // Software.
 
 #![no_std]
-#![cfg_attr(feature = "docsrs", feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 #![allow(unused_attributes)]
 #![warn(absolute_paths_not_starting_with_crate)]

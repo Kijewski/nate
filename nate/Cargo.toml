@@ -34,7 +34,6 @@ ryu = ["ryu_"]
 ## faster float printing, JavaScript compatible; takes precedence over `ryu`
 ryu-js = ["ryu_js_"]
 
-docsrs = ["default"]
-
 [package.metadata.docs.rs]
-features = ["docsrs"]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

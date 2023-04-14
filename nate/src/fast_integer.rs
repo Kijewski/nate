@@ -10,7 +10,7 @@ use crate::escape::EscapeWrapper;
 impl<T: IntMarker> crate::fast_integer::IntKind for EscapeWrapper<T> {}
 
 /// Types implementing this marker get printed using [itoa](crate::details::itoa)
-#[cfg_attr(feature = "docsrs", doc(cfg(feature = "itoa")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "itoa")))]
 pub trait IntMarker {
     #[doc(hidden)]
     type Escaped: fmt::Display;
@@ -299,7 +299,7 @@ impl<T: IntMarker> IntMarker for num::Wrapping<T> {
 
 #[cfg(feature = "alloc")]
 const _: () = {
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: IntMarker + alloc::borrow::ToOwned> IntMarker for alloc::borrow::Cow<'_, T> {
         type Escaped = T::Escaped;
 
@@ -310,7 +310,7 @@ const _: () = {
         }
     }
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: IntMarker> IntMarker for alloc::boxed::Box<T> {
         type Escaped = T::Escaped;
 
@@ -321,7 +321,7 @@ const _: () = {
         }
     }
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: IntMarker> IntMarker for alloc::rc::Rc<T> {
         type Escaped = T::Escaped;
 
@@ -332,7 +332,7 @@ const _: () = {
         }
     }
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: IntMarker> IntMarker for alloc::sync::Arc<T> {
         type Escaped = T::Escaped;
 
@@ -348,7 +348,7 @@ const _: () = {
 const _: () = {
     use crate::details::std::sync;
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(feature = "std")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     impl<T: IntMarker> IntMarker for sync::MutexGuard<'_, T> {
         type Escaped = T::Escaped;
 
@@ -359,7 +359,7 @@ const _: () = {
         }
     }
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(feature = "std")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     impl<T: IntMarker> IntMarker for sync::RwLockReadGuard<'_, T> {
         type Escaped = T::Escaped;
 
@@ -370,7 +370,7 @@ const _: () = {
         }
     }
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(feature = "std")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     impl<T: IntMarker> IntMarker for sync::RwLockWriteGuard<'_, T> {
         type Escaped = T::Escaped;
 

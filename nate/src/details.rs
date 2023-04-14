@@ -93,7 +93,7 @@ pub trait RenderInto {
 
     /// Render the output into an io::Write object
     #[cfg(feature = "alloc")]
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "alloc", feature = "std"))))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
     #[inline]
     fn render_io(&self, output: impl alloc::io::Write) -> std::fmt::Result {
         self.render_into(WriteIo(output))
@@ -101,7 +101,7 @@ pub trait RenderInto {
 
     /// Render the output into a new string
     #[cfg(feature = "alloc")]
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "alloc", feature = "std"))))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
     fn render_string(&self) -> std::result::Result<alloc::string::String, std::fmt::Error> {
         let mut result = alloc::string::String::new();
         self.render_fmt(&mut result)?;
@@ -110,7 +110,7 @@ pub trait RenderInto {
 
     /// Render the output into a new vector
     #[cfg(feature = "alloc")]
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "alloc", feature = "std"))))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
     fn render_bytes(&self) -> std::result::Result<alloc::vec::Vec<u8>, std::fmt::Error> {
         let mut result = alloc::vec::Vec::new();
         self.render_io(&mut result)?;

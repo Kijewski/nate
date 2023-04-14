@@ -105,13 +105,13 @@ impl<T: RawMarker> RawMarker for num::Wrapping<T> {}
 
 #[cfg(feature = "alloc")]
 const _: () = {
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: RawMarker + alloc::borrow::ToOwned> RawMarker for alloc::borrow::Cow<'_, T> {}
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: RawMarker> RawMarker for alloc::boxed::Box<T> {}
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: RawMarker> RawMarker for alloc::rc::Rc<T> {}
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: RawMarker> RawMarker for alloc::sync::Arc<T> {}
 };
 
@@ -119,11 +119,11 @@ const _: () = {
 const _: () = {
     use super::details::std::sync;
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(feature = "std")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     impl<T: RawMarker> RawMarker for sync::MutexGuard<'_, T> {}
-    #[cfg_attr(feature = "docsrs", doc(cfg(feature = "std")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     impl<T: RawMarker> RawMarker for sync::RwLockReadGuard<'_, T> {}
-    #[cfg_attr(feature = "docsrs", doc(cfg(feature = "std")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     impl<T: RawMarker> RawMarker for sync::RwLockWriteGuard<'_, T> {}
 };
 

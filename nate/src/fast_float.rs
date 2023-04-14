@@ -10,7 +10,7 @@ use crate::escape::EscapeWrapper;
 impl<T: FloatMarker> crate::fast_float::FloatKind for EscapeWrapper<T> {}
 
 /// Types implementing this marker get printed using [ryu](crate::details::ryu)
-#[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "ryu", feature = "ryu-js"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "ryu", feature = "ryu-js"))))]
 pub trait FloatMarker {
     #[doc(hidden)]
     type Escaped: fmt::Display;
@@ -101,7 +101,7 @@ impl<T: FloatMarker> FloatMarker for num::Wrapping<T> {
 
 #[cfg(feature = "alloc")]
 const _: () = {
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: FloatMarker + alloc::borrow::ToOwned> FloatMarker for alloc::borrow::Cow<'_, T> {
         type Escaped = T::Escaped;
 
@@ -112,7 +112,7 @@ const _: () = {
         }
     }
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: FloatMarker> FloatMarker for alloc::boxed::Box<T> {
         type Escaped = T::Escaped;
 
@@ -123,7 +123,7 @@ const _: () = {
         }
     }
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: FloatMarker> FloatMarker for alloc::rc::Rc<T> {
         type Escaped = T::Escaped;
 
@@ -134,7 +134,7 @@ const _: () = {
         }
     }
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: FloatMarker> FloatMarker for alloc::sync::Arc<T> {
         type Escaped = T::Escaped;
 
@@ -150,7 +150,7 @@ const _: () = {
 const _: () = {
     use crate::details::std::sync;
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(feature = "std")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     impl<T: FloatMarker> FloatMarker for sync::MutexGuard<'_, T> {
         type Escaped = T::Escaped;
 
@@ -161,7 +161,7 @@ const _: () = {
         }
     }
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(feature = "std")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     impl<T: FloatMarker> FloatMarker for sync::RwLockReadGuard<'_, T> {
         type Escaped = T::Escaped;
 
@@ -172,7 +172,7 @@ const _: () = {
         }
     }
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(feature = "std")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     impl<T: FloatMarker> FloatMarker for sync::RwLockWriteGuard<'_, T> {
         type Escaped = T::Escaped;
 
