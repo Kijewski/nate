@@ -28,7 +28,6 @@
 // the License, but only in their entirety and only with respect to the Combined
 // Software.
 
-#![no_std]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 #![allow(unused_attributes)]
@@ -48,7 +47,6 @@
 #![warn(unused_extern_crates)]
 #![warn(unused_lifetimes)]
 #![warn(unused_results)]
-#![no_implicit_prelude]
 
 //! ## NaTE — Not a Template Engine
 //!
@@ -100,7 +98,7 @@
 //!     <h1>Hello, &#60;World&#62;!</h1>
 //!     ```
 //!
-//! No new traits are needed, instead `#[derive(Nate)]` primarily works by implementing [fmt::Display].
+//! No new traits are needed, instead `#[derive(Nate)]` primarily works by implementing [`fmt::Display`](core::fmt::Display).
 //! This also makes nesting of NaTE templates possible.
 //!
 //! A more complex example would be:
@@ -174,36 +172,26 @@
 //!
 //! ## Feature flags
 //!
-//! * *std* <sup>\[enabled by default\]</sup> — enable features found in [std] crate, e.g. printing the value of a [MutexGuard]
+//! * `std` <sup>\[enabled by default\]</sup> — enable features found in [`std`] crate, e.g. printing the value of a [`MutexGuard`](std::sync::MutexGuard)
 //!
-//! * *alloc* <sup>\[enabled by default, enabled by `std`\]</sup> — enable features found in the [alloc] crate, e.g. [io::Write]
+//! * `alloc` <sup>\[enabled by default, enabled by `std`\]</sup> — enable features found in the [`alloc`] crate, e.g. [`io::Write`](std::io::Write)
 //!
-//! * *faster* <sup>\[enabled by default\]</sup> — use specialized algorithms for faster integer and float printing
-//!
-//! * *itoa* <sup>\[enabled by default, enabled by `faster`\]</sup> — faster integer printing using [itoa](https://crates.io/crates/itoa)
-//!
-//! * *ryu* <sup>\[enabled by default, enabled by `faster`\]</sup> — faster float printing [ryu](https://crates.io/crates/ryu)
-//!
-//! * *ryu-js* — faster float printing [ryu-js](https://crates.io/crates/ryu-js); takes precedence over `ryu`
-//!
+
+#[cfg(doc)]
+extern crate alloc;
+#[cfg(doc)]
+extern crate std;
 
 #[doc(hidden)]
 pub mod details;
 mod escape;
 mod fast_float;
 mod fast_integer;
+mod raw;
 
 pub use ::nate_derive::{addr, Nate};
 
-#[cfg(doc)]
-use crate::details::{
-    alloc,
-    std::sync::MutexGuard,
-    std::{self, fmt, io},
-};
 pub use crate::details::{RenderInto, WriteAny};
-pub use crate::escape::RawMarker;
-#[cfg(any(feature = "ryu", feature = "ryu-js"))]
 pub use crate::fast_float::FloatMarker;
-#[cfg(feature = "itoa")]
 pub use crate::fast_integer::IntMarker;
+pub use crate::raw::RawMarker;

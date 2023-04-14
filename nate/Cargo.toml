@@ -1,8 +1,8 @@
 [package]
 name = "nate"
-version = "0.3.3"
-edition = "2018"
-# rust-version = "1.53"
+version = "0.4.0"
+edition = "2021"
+rust-version = "1.56"
 authors = ["René Kijewski <crates.io@k6i.de>"]
 license = "Apache-2.0 WITH LLVM-exception"
 description = "Not a Template Engine. Derive Display using a template."
@@ -13,26 +13,17 @@ keywords = ["html", "template", "no-std"]
 readme = "README.md"
 
 [dependencies]
-nate-derive = { path = "../nate-derive", version = "0.3.3" }
+nate-derive = { path = "../nate-derive", version = "0.4.0" }
 
-itoa_ = { package = "itoa", version = "=1", optional = true }
-ryu_ = { package = "ryu", version = "=1", optional = true }
-ryu_js_ = { package = "ryu-js", version = "=0.2", optional = true }
+itoa = "=1"
+ryu = "=0.2"
 
 [features]
-default = ["std", "faster"]
+default = ["std"]
 ## disable [`#![no_std]`](https://docs.rust-embedded.org/book/intro/no-std.html), implies `alloc`
 std = ["alloc"]
 ## enable features found in the [alloc](https://doc.rust-lang.org/stable/alloc/) crate, e.g. std::io::Write
 alloc = []
-## use specialized algorithms for faster integer and float printing
-faster = ["itoa", "ryu"]
-## faster integer printing
-itoa = ["itoa_"]
-## faster float printing
-ryu = ["ryu_"]
-## faster float printing, JavaScript compatible; takes precedence over `ryu`
-ryu-js = ["ryu_js_"]
 
 [package.metadata.docs.rs]
 all-features = true

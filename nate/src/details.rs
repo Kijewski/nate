@@ -1,80 +1,90 @@
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-pub extern crate alloc;
-
-#[cfg(not(feature = "alloc"))]
-pub mod alloc {}
-
+#[cfg(feature = "alloc")]
+extern crate alloc;
 #[cfg(feature = "std")]
-pub extern crate std;
+extern crate std;
 
-#[cfg(not(feature = "std"))]
-pub extern crate core as std;
+#[doc(hidden)]
+pub use core;
+use core::fmt;
+#[cfg(feature = "alloc")]
+use core::fmt::Write as _;
+use core::marker::PhantomData;
 
-#[cfg(feature = "std")]
-pub use std as alloc;
-
-pub mod itoa {
-    #[cfg(feature = "itoa")]
-    pub use ::itoa_::{Buffer, Integer};
-}
-
-pub mod ryu {
-    #[cfg(all(feature = "ryu", not(feature = "ryu-js")))]
-    pub use ::ryu_::{Buffer, Float};
-    #[cfg(feature = "ryu-js")]
-    pub use ::ryu_js_::{Buffer, Float};
-}
-
-pub use crate::escape::{EscapeKind, EscapeWrapper, RawKind, XmlEscape};
-#[cfg(feature = "ryu")]
+pub use crate::escape::{EscapeKind, XmlEscape};
 pub use crate::fast_float::FloatKind;
-#[cfg(feature = "itoa")]
 pub use crate::fast_integer::IntKind;
+pub use crate::raw::RawKind;
 
 #[doc(hidden)]
-#[cfg(not(any(feature = "ryu", feature = "ryu-js")))]
-pub trait FloatKind {}
+#[derive(Debug, Clone, Copy, Default)]
+pub struct EscapeWrapper<E>(PhantomData<E>);
 
-#[doc(hidden)]
-#[cfg(not(feature = "itoa"))]
-pub trait IntKind {}
+impl<E> EscapeWrapper<E> {
+    #[doc(hidden)]
+    #[inline]
+    pub fn new(_: &E) -> Self {
+        Self(PhantomData)
+    }
+}
 
 #[doc(hidden)]
 pub trait WriteAny {
-    fn write_fmt(&mut self, fmt: std::fmt::Arguments<'_>) -> std::fmt::Result;
-    fn write_str(&mut self, s: &str) -> std::fmt::Result;
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> fmt::Result;
+    fn write_str(&mut self, s: &str) -> fmt::Result;
 }
 
-#[cfg(feature = "alloc")]
-pub(crate) struct WriteIo<W: alloc::io::Write>(pub(crate) W);
+#[cfg(feature = "std")]
+pub(crate) struct WriteIo<W: std::io::Write>(pub(crate) W);
 
-pub(crate) struct WriteFmt<W: std::fmt::Write>(pub(crate) W);
+pub(crate) struct WriteFmt<W: fmt::Write>(pub(crate) W);
 
 #[cfg(feature = "alloc")]
-impl<W: alloc::io::Write> WriteAny for WriteIo<W> {
+pub(crate) struct WriteString<'a>(pub(crate) &'a mut alloc::string::String);
+
+#[cfg(feature = "std")]
+impl<W: std::io::Write> WriteAny for WriteIo<W> {
     #[inline]
-    fn write_fmt(&mut self, fmt: std::fmt::Arguments<'_>) -> std::fmt::Result {
-        match <W as alloc::io::Write>::write_fmt(&mut self.0, fmt) {
-            std::result::Result::Ok(_) => std::result::Result::Ok(()),
-            std::result::Result::Err(_) => std::result::Result::Err(std::fmt::Error),
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> fmt::Result {
+        match <W as std::io::Write>::write_fmt(&mut self.0, fmt) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(fmt::Error),
         }
     }
 
     #[inline]
-    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
         self.write_fmt(format_args!("{}", s))
     }
 }
 
-impl<W: std::fmt::Write> WriteAny for WriteFmt<W> {
+impl<W: fmt::Write> WriteAny for WriteFmt<W> {
     #[inline]
-    fn write_fmt(&mut self, fmt: std::fmt::Arguments<'_>) -> std::fmt::Result {
-        <W as std::fmt::Write>::write_fmt(&mut self.0, fmt)
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> fmt::Result {
+        <W as fmt::Write>::write_fmt(&mut self.0, fmt)
     }
 
     #[inline]
-    fn write_str(&mut self, s: &str) -> std::fmt::Result {
-        <W as std::fmt::Write>::write_str(&mut self.0, s)
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        <W as fmt::Write>::write_str(&mut self.0, s)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl WriteAny for WriteString<'_> {
+    #[inline]
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> fmt::Result {
+        if let Some(s) = fmt.as_str() {
+            self.0.push_str(s);
+            Ok(())
+        } else {
+            self.0.write_fmt(fmt)
+        }
+    }
+
+    #[inline]
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.0.push_str(s);
+        Ok(())
     }
 }
 
@@ -83,37 +93,27 @@ impl<W: std::fmt::Write> WriteAny for WriteFmt<W> {
 /// Every NaTE template implements this trait.
 pub trait RenderInto {
     #[doc(hidden)]
-    fn render_into(&self, output: impl WriteAny) -> std::fmt::Result;
+    fn render_into(&self, output: impl WriteAny) -> fmt::Result;
 
-    /// Render the output into an fmt::Write object
+    /// Render the output into an [`fmt::Write`](std::fmt::Write) object
     #[inline]
-    fn render_fmt(&self, output: impl std::fmt::Write) -> std::fmt::Result {
+    fn render_fmt(&self, output: impl fmt::Write) -> fmt::Result {
         self.render_into(WriteFmt(output))
     }
 
-    /// Render the output into an io::Write object
-    #[cfg(feature = "alloc")]
-    #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
+    /// Render the output into an [`io::Write`](std::io::Write) object
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     #[inline]
-    fn render_io(&self, output: impl alloc::io::Write) -> std::fmt::Result {
+    fn render_io(&self, output: impl std::io::Write) -> fmt::Result {
         self.render_into(WriteIo(output))
     }
 
-    /// Render the output into a new string
+    /// Render the output into a [`String`]
     #[cfg(feature = "alloc")]
-    #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
-    fn render_string(&self) -> std::result::Result<alloc::string::String, std::fmt::Error> {
-        let mut result = alloc::string::String::new();
-        self.render_fmt(&mut result)?;
-        std::result::Result::Ok(result)
-    }
-
-    /// Render the output into a new vector
-    #[cfg(feature = "alloc")]
-    #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
-    fn render_bytes(&self) -> std::result::Result<alloc::vec::Vec<u8>, std::fmt::Error> {
-        let mut result = alloc::vec::Vec::new();
-        self.render_io(&mut result)?;
-        std::result::Result::Ok(result)
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[inline]
+    fn render_string(&self, output: &mut alloc::string::String) -> fmt::Result {
+        self.render_into(WriteString(output))
     }
 }

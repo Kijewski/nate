@@ -1,29 +1,11 @@
-#[cfg(feature = "alloc")]
-use crate::details::alloc;
-use crate::details::std::fmt::{self, Write as _};
-use crate::details::std::marker::PhantomData;
-use crate::details::std::prelude::v1::*;
-use crate::details::std::{cell, num, write};
+#[cfg(feature = "std")]
+extern crate std;
 
-#[doc(hidden)]
-#[derive(Debug, Clone, Copy, Default)]
-pub struct EscapeWrapper<E>(PhantomData<E>);
+use core::fmt::{self, Write as _};
 
-impl<E> EscapeWrapper<E> {
-    #[doc(hidden)]
-    #[inline]
-    pub fn new(_: &E) -> Self {
-        Self(PhantomData)
-    }
-}
+use crate::details::EscapeWrapper;
 
-#[doc(hidden)]
-pub trait RawKind {
-    #[inline]
-    fn wrap<'a, T: RawMarker>(&self, value: &'a T) -> &'a T {
-        value
-    }
-}
+impl<E> EscapeKind for &EscapeWrapper<E> {}
 
 #[doc(hidden)]
 pub trait EscapeKind {
@@ -85,79 +67,4 @@ const _: () = {
             self.0.write_str(&string[last..])
         }
     }
-};
-
-impl<T: RawMarker> RawKind for EscapeWrapper<T> {}
-
-impl<T> EscapeKind for &EscapeWrapper<T> {}
-
-/// Types implementing this marker don't need to be escaped
-pub trait RawMarker {}
-
-impl<T: RawMarker> RawMarker for &T {}
-impl<T> RawMarker for XmlEscape<T> {}
-
-impl RawMarker for bool {}
-
-impl<T: RawMarker> RawMarker for cell::Ref<'_, T> {}
-impl<T: RawMarker> RawMarker for cell::RefMut<'_, T> {}
-impl<T: RawMarker> RawMarker for num::Wrapping<T> {}
-
-#[cfg(feature = "alloc")]
-const _: () = {
-    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
-    impl<T: RawMarker + alloc::borrow::ToOwned> RawMarker for alloc::borrow::Cow<'_, T> {}
-    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
-    impl<T: RawMarker> RawMarker for alloc::boxed::Box<T> {}
-    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
-    impl<T: RawMarker> RawMarker for alloc::rc::Rc<T> {}
-    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
-    impl<T: RawMarker> RawMarker for alloc::sync::Arc<T> {}
-};
-
-#[cfg(feature = "std")]
-const _: () = {
-    use super::details::std::sync;
-
-    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    impl<T: RawMarker> RawMarker for sync::MutexGuard<'_, T> {}
-    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    impl<T: RawMarker> RawMarker for sync::RwLockReadGuard<'_, T> {}
-    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    impl<T: RawMarker> RawMarker for sync::RwLockWriteGuard<'_, T> {}
-};
-
-#[cfg(not(feature = "itoa"))]
-const _: () = {
-    impl RawMarker for i128 {}
-    impl RawMarker for i16 {}
-    impl RawMarker for i32 {}
-    impl RawMarker for i64 {}
-    impl RawMarker for i8 {}
-    impl RawMarker for isize {}
-    impl RawMarker for u128 {}
-    impl RawMarker for u16 {}
-    impl RawMarker for u32 {}
-    impl RawMarker for u64 {}
-    impl RawMarker for u8 {}
-    impl RawMarker for usize {}
-
-    impl RawMarker for num::NonZeroI8 {}
-    impl RawMarker for num::NonZeroI16 {}
-    impl RawMarker for num::NonZeroI32 {}
-    impl RawMarker for num::NonZeroI64 {}
-    impl RawMarker for num::NonZeroI128 {}
-    impl RawMarker for num::NonZeroIsize {}
-    impl RawMarker for num::NonZeroU8 {}
-    impl RawMarker for num::NonZeroU16 {}
-    impl RawMarker for num::NonZeroU32 {}
-    impl RawMarker for num::NonZeroU64 {}
-    impl RawMarker for num::NonZeroU128 {}
-    impl RawMarker for num::NonZeroUsize {}
-};
-
-#[cfg(not(any(feature = "ryu", feature = "ryu-js")))]
-const _: () = {
-    impl RawMarker for f32 {}
-    impl RawMarker for f64 {}
 };
