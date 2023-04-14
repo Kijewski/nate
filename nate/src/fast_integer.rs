@@ -1,16 +1,18 @@
-#![cfg(feature = "itoa")]
-
 #[cfg(feature = "alloc")]
-use crate::details::alloc;
-use crate::details::itoa::{Buffer, Integer};
-use crate::details::std::marker::Copy;
-use crate::details::std::{cell, fmt, num};
-use crate::escape::EscapeWrapper;
+extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
 
-impl<T: IntMarker> crate::fast_integer::IntKind for EscapeWrapper<T> {}
+use core::marker::Copy;
+use core::{cell, fmt, num};
 
-/// Types implementing this marker get printed using [itoa](crate::details::itoa)
-#[cfg_attr(feature = "docsrs", doc(cfg(feature = "itoa")))]
+use itoa::{Buffer, Integer};
+
+use crate::details::EscapeWrapper;
+
+impl<T: IntMarker> IntKind for &&EscapeWrapper<T> {}
+
+/// Types implementing this marker get printed using [`itoa`](::itoa)
 pub trait IntMarker {
     #[doc(hidden)]
     type Escaped: fmt::Display;
@@ -298,8 +300,8 @@ impl<T: IntMarker> IntMarker for num::Wrapping<T> {
 }
 
 #[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 const _: () = {
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: IntMarker + alloc::borrow::ToOwned> IntMarker for alloc::borrow::Cow<'_, T> {
         type Escaped = T::Escaped;
 
@@ -310,7 +312,6 @@ const _: () = {
         }
     }
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: IntMarker> IntMarker for alloc::boxed::Box<T> {
         type Escaped = T::Escaped;
 
@@ -321,7 +322,6 @@ const _: () = {
         }
     }
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: IntMarker> IntMarker for alloc::rc::Rc<T> {
         type Escaped = T::Escaped;
 
@@ -332,7 +332,6 @@ const _: () = {
         }
     }
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(any(feature = "std", feature = "alloc"))))]
     impl<T: IntMarker> IntMarker for alloc::sync::Arc<T> {
         type Escaped = T::Escaped;
 
@@ -345,10 +344,10 @@ const _: () = {
 };
 
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 const _: () = {
-    use crate::details::std::sync;
+    use std::sync;
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(feature = "std")))]
     impl<T: IntMarker> IntMarker for sync::MutexGuard<'_, T> {
         type Escaped = T::Escaped;
 
@@ -359,7 +358,6 @@ const _: () = {
         }
     }
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(feature = "std")))]
     impl<T: IntMarker> IntMarker for sync::RwLockReadGuard<'_, T> {
         type Escaped = T::Escaped;
 
@@ -370,7 +368,6 @@ const _: () = {
         }
     }
 
-    #[cfg_attr(feature = "docsrs", doc(cfg(feature = "std")))]
     impl<T: IntMarker> IntMarker for sync::RwLockWriteGuard<'_, T> {
         type Escaped = T::Escaped;
 

@@ -27,7 +27,7 @@ enum ParsedData {
 }
 
 const TAIL: &str = r#"
-            ::nate::details::std::fmt::Result::Ok(())
+            ::nate::details::core::fmt::Result::Ok(())
         }
     }
 }
@@ -56,14 +56,14 @@ pub(crate) fn generate(input: TokenStream) -> Result<TokenStream, CompileError> 
         content,
         r#"{{
     #[allow(unused_qualifications)]
-    impl {impl_generics} ::nate::details::std::fmt::Display
+    impl {impl_generics} ::nate::details::core::fmt::Display
         for {ident} {type_generics} {where_clause}
     {{
         #[inline]
         fn fmt(
             &self,
-            output: &mut ::nate::details::std::fmt::Formatter<'_>,
-        ) -> ::nate::details::std::fmt::Result {{
+            output: &mut ::nate::details::core::fmt::Formatter<'_>,
+        ) -> ::nate::details::core::fmt::Result {{
             ::nate::RenderInto::render_fmt(self, output)
         }}
     }}
@@ -79,7 +79,7 @@ pub(crate) fn generate(input: TokenStream) -> Result<TokenStream, CompileError> 
         fn render_into(
             &self,
             mut output: impl ::nate::WriteAny,
-        ) -> ::nate::details::std::fmt::Result {{
+        ) -> ::nate::details::core::fmt::Result {{
 "#,
         impl_generics = quote!(#impl_generics),
         type_generics = quote!(#type_generics),
@@ -203,7 +203,7 @@ fn parse_file(
             writeln!(output, "            RawKind as _,")?;
             writeln!(output, "        }};")?;
 
-            // let (_nate_X_Y, …) = (&(EscapeWrapper::new(…)).wrap(…), …);
+            // let (_nate_X_Y, …) = ((&&&EscapeWrapper::new(…)).wrap(…), …);
             writeln!(output, "        let (")?;
             for (data_index, data) in blocks.iter().enumerate() {
                 if !matches!(data, Data(_) | Raw(_)) {
@@ -223,7 +223,7 @@ fn parse_file(
                         writeln!(output, "            /* {} */", AddrAnnotation(s))?;
                         writeln!(
                             output,
-                            "            (&::nate::details::EscapeWrapper::new(_nate_{block}_{data})).\
+                            "            (&&&::nate::details::EscapeWrapper::new(_nate_{block}_{data})).\
                                 wrap(_nate_{block}_{data}),",
                             block = block_index,
                             data = data_index,
@@ -246,7 +246,7 @@ fn parse_file(
         // write!(…);
         writeln!(output, "        <_ as ::nate::WriteAny>::write_fmt(")?;
         writeln!(output, "            &mut output,")?;
-        writeln!(output, "            ::nate::details::std::format_args!(")?;
+        writeln!(output, "            ::nate::details::core::format_args!(")?;
         write!(output, "                \"")?;
         for (data_index, data) in blocks.iter().enumerate() {
             match data {
@@ -318,8 +318,8 @@ fn parse_into(
     let s = SpanInput::new(format!(
         "\
 {{\n\
-const _: &[::nate::details::std::primitive::u8] = \
-::nate::details::std::include_bytes!({:?});",
+const _: &[::nate::details::core::primitive::u8] = \
+::nate::details::core::include_bytes!({:?});",
         path
     ));
     match accu.last_mut() {
