@@ -17,7 +17,7 @@ proc-macro = true
 
 [dependencies]
 blake2 = "=0.10"
-darling = ">= 0.12, <= 0.14"
+darling = ">= 0.12, <= 0.21"
 hex = "=0.4"
 nom = "=7"
 nom_locate = "4.0.0"
