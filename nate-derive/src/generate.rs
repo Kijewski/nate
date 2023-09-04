@@ -73,6 +73,8 @@ pub(crate) fn generate(input: TokenStream) -> Result<TokenStream, CompileError> 
     #[allow(clippy::needless_borrow)]
     #[allow(clippy::needless_borrowed_reference)]
     #[allow(clippy::suspicious_else_formatting)]
+    #[allow(clippy::uninlined_format_args)]
+    #[allow(clippy::used_underscore_binding)]
     impl {impl_generics} ::nate::RenderInto
         for {ident} {type_generics} {where_clause}
     {{
