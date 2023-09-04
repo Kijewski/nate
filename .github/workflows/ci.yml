@@ -29,7 +29,7 @@ jobs:
         toolchain:
           - "1.56"
           - stable
-          - nightly
+          - beta
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -49,7 +49,7 @@ jobs:
         toolchain:
           - "1.56"
           - stable
-          - nightly
+          - beta
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -68,7 +68,7 @@ jobs:
         toolchain:
           - "1.56"
           - stable
-          - nightly
+          - beta
         os:
           - ubuntu-20.04
           - windows-2022
@@ -100,7 +100,7 @@ jobs:
         toolchain:
           - "1.56"
           - stable
-          - nightly
+          - beta
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
