@@ -18,3 +18,15 @@ fn closing_brace_in_data() -> Result {
     assert_eq!(buf, "&#34;Test äö\\\\ü&#34;\n");
     Ok(())
 }
+
+/// <https://github.com/Kijewski/nate/issues/52>
+#[test]
+fn clippy_pedantic_should_be_fine() {
+    #![deny(clippy::pedantic)]
+
+    #[derive(Nate)]
+    #[template(path = "templates/99-bottles.html")]
+    struct Template {
+        limit: usize,
+    }
+}

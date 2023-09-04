@@ -4,6 +4,7 @@ members = [
     "nate-derive",
     "nate-tests",
 ]
+resolver = "2"
 
 default-members = [
     "nate",
